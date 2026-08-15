@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Shield, Sparkles } from 'lucide-react';
+import { Shield } from 'lucide-react';
 import AuthCard from './components/AuthCard';
 import PasskeyModal from './components/PasskeyModal';
 import VaultDashboard from './components/VaultDashboard';
@@ -28,7 +28,7 @@ export default function App() {
 
   return (
     <>
-      {/* Background sci-fi canvas effects */}
+      {/* Background canvas effects */}
       <div className="bg-canvas">
         <div className="grid-overlay"></div>
         <div className="glow-orb glow-orb-1"></div>
@@ -41,7 +41,7 @@ export default function App() {
           <header className="brand-header">
             <div className="brand-icon-wrapper">
               <div className="pulse-ring"></div>
-              <Shield size={34} color="var(--cyan-glow)" />
+              <Shield size={36} color="var(--cyan-accent)" />
             </div>
             <h1 className="brand-title">PROJECT FRIDAY</h1>
             <p className="brand-subtitle">SECURE DATA VAULT & AUTHENTICATION</p>
@@ -67,10 +67,11 @@ export default function App() {
         )}
 
         {/* Footer */}
-        <footer style={{ marginTop: '36px', textTransform: 'uppercase', textAlign: 'center', fontSize: '0.72rem', color: '#4a5568', letterSpacing: '1px' }}>
+        <footer className="app-footer">
           PROJECT FRIDAY SYSTEM &bull; LOCAL MONGODB BACKEND &bull; STAGE 1
         </footer>
       </div>
     </>
   );
 }
+

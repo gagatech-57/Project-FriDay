@@ -8,14 +8,13 @@ import {
   EyeOff, 
   LogIn, 
   UserPlus, 
-  ShieldCheck, 
   AlertCircle,
   CheckCircle2,
   Check
 } from 'lucide-react';
 import { loginUser, registerUser } from '../services/api';
 
-export default function AuthCard({ onLoginSuccess, onRequirePasskey }) {
+export default function AuthCard({ onRequirePasskey }) {
   const [activeTab, setActiveTab] = useState('login'); // 'login' | 'register'
 
   // Form State
@@ -46,6 +45,26 @@ export default function AuthCard({ onLoginSuccess, onRequirePasskey }) {
     resetForm();
   };
 
+  // Password strength score (0 to 4)
+  const getPasswordStrength = (pass) => {
+    if (!pass) return { score: 0, text: 'EMPTY', color: '#4a5568' };
+    let score = 0;
+    if (pass.length >= 6) score += 1;
+    if (pass.length >= 10) score += 1;
+    if (/[A-Z]/.test(pass) || /[0-9]/.test(pass)) score += 1;
+    if (/[^A-Za-z0-9]/.test(pass)) score += 1;
+
+    switch (score) {
+      case 1: return { score: 25, text: 'WEAK', color: '#ff4757' };
+      case 2: return { score: 50, text: 'FAIR', color: '#ffa502' };
+      case 3: return { score: 75, text: 'STRONG', color: '#2ed573' };
+      case 4: return { score: 100, text: 'EXCELLENT', color: '#00f2fe' };
+      default: return { score: 15, text: 'TOO SHORT', color: '#ff4757' };
+    }
+  };
+
+  const strength = getPasswordStrength(password);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg('');
@@ -66,9 +85,9 @@ export default function AuthCard({ onLoginSuccess, onRequirePasskey }) {
         setSuccessMsg(res.message);
         setTimeout(() => {
           onRequirePasskey({ email, user: res.user, token: res.token });
-        }, 800);
+        }, 600);
       } else {
-        setErrorMsg(res.message || 'Login failed.');
+        setErrorMsg(res.message || 'Login failed. Please verify credentials.');
       }
     } else {
       // Register
@@ -97,7 +116,7 @@ export default function AuthCard({ onLoginSuccess, onRequirePasskey }) {
         setSuccessMsg('Account created! Proceeding to Passkey verification...');
         setTimeout(() => {
           onRequirePasskey({ email, user: res.user, token: res.token });
-        }, 1000);
+        }, 800);
       } else {
         setErrorMsg(res.message || 'Registration failed.');
       }
@@ -107,25 +126,36 @@ export default function AuthCard({ onLoginSuccess, onRequirePasskey }) {
   return (
     <div className="glass-card-wrapper">
       <div className="glass-card">
-        {/* Card Header Banner */}
-        <div className="card-header-banner">
-          <h2 className="card-header-title">
-            {activeTab === 'login' ? 'MEMBER LOGIN' : 'CREATE ACCOUNT'}
-          </h2>
+        {/* Interactive Tab Switcher Banner */}
+        <div className="card-header-tabs">
+          <button
+            type="button"
+            className={`tab-btn ${activeTab === 'login' ? 'active' : ''}`}
+            onClick={() => handleTabSwitch('login')}
+          >
+            <LogIn size={16} /> SIGN IN
+          </button>
+          <button
+            type="button"
+            className={`tab-btn ${activeTab === 'register' ? 'active' : ''}`}
+            onClick={() => handleTabSwitch('register')}
+          >
+            <UserPlus size={16} /> REGISTER
+          </button>
         </div>
 
         <div className="card-body">
-          {/* Notifications */}
+          {/* Status Notifications */}
           {errorMsg && (
             <div className="alert-box alert-error">
-              <AlertCircle size={16} />
+              <AlertCircle size={18} />
               <span>{errorMsg}</span>
             </div>
           )}
 
           {successMsg && (
             <div className="alert-box alert-success">
-              <CheckCircle2 size={16} />
+              <CheckCircle2 size={18} />
               <span>{successMsg}</span>
             </div>
           )}
@@ -135,11 +165,12 @@ export default function AuthCard({ onLoginSuccess, onRequirePasskey }) {
             {/* Name Field (Register Mode Only) */}
             {activeTab === 'register' && (
               <div className="form-group">
+                <label className="input-label">FULL NAME</label>
                 <div className="input-wrapper">
                   <input
                     type="text"
                     className="input-field"
-                    placeholder="YOUR FIRST & LAST NAME"
+                    placeholder="e.g. Alex Mercer"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
@@ -151,11 +182,12 @@ export default function AuthCard({ onLoginSuccess, onRequirePasskey }) {
 
             {/* Email Field */}
             <div className="form-group">
+              <label className="input-label">EMAIL ADDRESS</label>
               <div className="input-wrapper">
                 <input
                   type="email"
                   className="input-field"
-                  placeholder="YOUR E-MAIL ADDRESS"
+                  placeholder="name@company.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -166,11 +198,12 @@ export default function AuthCard({ onLoginSuccess, onRequirePasskey }) {
 
             {/* Password Field */}
             <div className="form-group">
+              <label className="input-label">ACCOUNT PASSWORD</label>
               <div className="input-wrapper">
                 <input
                   type={showPassword ? 'text' : 'password'}
                   className="input-field"
-                  placeholder="YOUR PASSWORD"
+                  placeholder="••••••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
@@ -180,20 +213,37 @@ export default function AuthCard({ onLoginSuccess, onRequirePasskey }) {
                   type="button"
                   className="input-toggle-btn"
                   onClick={() => setShowPassword(!showPassword)}
+                  title={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
+
+              {/* Password Strength Meter (Register Mode) */}
+              {activeTab === 'register' && password.length > 0 && (
+                <div className="strength-meter">
+                  <div className="strength-bar-bg">
+                    <div 
+                      className="strength-bar-fill" 
+                      style={{ width: `${strength.score}%`, backgroundColor: strength.color }}
+                    />
+                  </div>
+                  <span className="strength-text" style={{ color: strength.color }}>
+                    {strength.text}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Passkey Field (Register Mode Only) */}
             {activeTab === 'register' && (
               <div className="form-group">
+                <label className="input-label">SECURITY PASSKEY (4-8 PIN)</label>
                 <div className="input-wrapper">
                   <input
                     type={showPasskey ? 'text' : 'password'}
                     className="input-field"
-                    placeholder="YOUR 4-DIGIT PASSKEY (PIN)"
+                    placeholder="e.g. 1234"
                     value={passkey}
                     onChange={(e) => setPasskey(e.target.value)}
                     maxLength={8}
@@ -204,6 +254,7 @@ export default function AuthCard({ onLoginSuccess, onRequirePasskey }) {
                     type="button"
                     className="input-toggle-btn"
                     onClick={() => setShowPasskey(!showPasskey)}
+                    title={showPasskey ? "Hide passkey" : "Show passkey"}
                   >
                     {showPasskey ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
@@ -211,28 +262,39 @@ export default function AuthCard({ onLoginSuccess, onRequirePasskey }) {
               </div>
             )}
 
-            {/* Submit Glossy Pill Button */}
+            {/* Submit Action Button */}
             <div className="action-button-container">
               <button type="submit" className="btn-glossy-pill" disabled={loading}>
                 {loading ? (
                   <span>AUTHENTICATING...</span>
                 ) : activeTab === 'login' ? (
-                  <span>LOGIN</span>
+                  <>
+                    <LogIn size={18} />
+                    <span>AUTHENTICATE & ACCESS</span>
+                  </>
                 ) : (
-                  <span>REGISTER ACCOUNT</span>
+                  <>
+                    <UserPlus size={18} />
+                    <span>CREATE FRIDAY ACCOUNT</span>
+                  </>
                 )}
               </button>
             </div>
 
-            {/* Remember Me Checkbox & Options */}
+            {/* Remember Me & Options */}
             {activeTab === 'login' && (
               <div className="form-options">
-                <label className="checkbox-label" onClick={() => setRememberMe(!rememberMe)}>
+                <div 
+                  className="checkbox-label" 
+                  onClick={() => setRememberMe(!rememberMe)}
+                  role="button"
+                  tabIndex={0}
+                >
                   <div className={`custom-checkbox ${rememberMe ? 'checked' : ''}`}>
-                    {rememberMe && <Check size={12} strokeWidth={3} />}
+                    {rememberMe && <Check size={14} strokeWidth={3} />}
                   </div>
                   <span>Remember me</span>
-                </label>
+                </div>
                 <a href="#forgot" className="forgot-link" onClick={(e) => e.preventDefault()}>
                   Forgot password?
                 </a>
@@ -241,30 +303,29 @@ export default function AuthCard({ onLoginSuccess, onRequirePasskey }) {
           </form>
         </div>
 
-        {/* Bottom Toggle Footer */}
+        {/* Card Footer */}
         <div className="card-footer">
-          <div className="footer-divider"></div>
           <p className="footer-text">
             {activeTab === 'login' ? (
               <>
-                Not a member?{' '}
+                New to Friday Vault?{' '}
                 <button
                   type="button"
                   className="footer-link-btn"
                   onClick={() => handleTabSwitch('register')}
                 >
-                  CREATE ACCOUNT
+                  CREATE AN ACCOUNT
                 </button>
               </>
             ) : (
               <>
-                Already a member?{' '}
+                Already registered?{' '}
                 <button
                   type="button"
                   className="footer-link-btn"
                   onClick={() => handleTabSwitch('login')}
                 >
-                  SIGN IN
+                  SIGN IN TO ACCOUNT
                 </button>
               </>
             )}
@@ -274,3 +335,4 @@ export default function AuthCard({ onLoginSuccess, onRequirePasskey }) {
     </div>
   );
 }
+

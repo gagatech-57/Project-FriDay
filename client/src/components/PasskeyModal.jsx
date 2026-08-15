@@ -40,7 +40,7 @@ export default function PasskeyModal({ email, user, onVerified, onCancel }) {
     if (res.success) {
       onVerified({ ...user, passkeyVerified: true });
     } else {
-      setErrorMsg(res.message || 'Invalid Passkey.');
+      setErrorMsg(res.message || 'Invalid Passkey entered.');
       setPasskeyInput('');
     }
   };
@@ -48,41 +48,30 @@ export default function PasskeyModal({ email, user, onVerified, onCancel }) {
   return (
     <div className="passkey-modal-overlay">
       <div className="passkey-card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <button
-            onClick={onCancel}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--text-muted)',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontSize: '0.8rem'
-            }}
-          >
+        {/* Navigation Bar */}
+        <div className="passkey-nav-bar">
+          <button onClick={onCancel} className="btn-back-link">
             <ArrowLeft size={16} /> BACK
           </button>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--cyan-glow)', fontSize: '0.75rem', fontFamily: 'var(--font-hud)' }}>
+          <div className="passkey-badge">
             <ShieldAlert size={14} /> LEVEL 2 AUTH
           </div>
         </div>
 
-        <div className="brand-icon-wrapper" style={{ width: '60px', height: '60px', margin: '0 auto 12px' }}>
-          <KeyRound size={26} color="var(--cyan-glow)" />
+        <div className="brand-icon-wrapper" style={{ width: '64px', height: '64px', margin: '0 auto 14px' }}>
+          <KeyRound size={28} color="var(--cyan-accent)" />
         </div>
 
-        <h3 style={{ fontFamily: 'var(--font-hud)', fontSize: '1.25rem', color: '#fff', marginBottom: '4px' }}>
+        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.3rem', color: '#fff', marginBottom: '6px' }}>
           PASSKEY REQUIRED
         </h3>
-        <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
-          Enter passkey associated with <span style={{ color: 'var(--cyan-glow)' }}>{email}</span>
+        <p style={{ fontSize: '0.84rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
+          Enter PIN for <span style={{ color: 'var(--cyan-accent)', fontWeight: '600' }}>{email}</span>
         </p>
 
         {errorMsg && (
-          <div className="alert-box alert-error" style={{ padding: '8px 12px', fontSize: '0.8rem' }}>
-            <AlertCircle size={15} />
+          <div className="alert-box alert-error">
+            <AlertCircle size={16} />
             <span>{errorMsg}</span>
           </div>
         )}
@@ -94,22 +83,23 @@ export default function PasskeyModal({ email, user, onVerified, onCancel }) {
           ))}
         </div>
 
-        {/* Direct Text Input Fallback / Display */}
+        {/* Form and Keypad */}
         <form onSubmit={handleVerify}>
           <input
             type="password"
             className="input-field"
-            style={{ textAlign: 'center', letterSpacing: '6px', fontSize: '1.4rem', fontFamily: 'var(--font-hud)', marginBottom: '20px' }}
+            style={{ textAlign: 'center', letterSpacing: '8px', fontSize: '1.5rem', fontFamily: 'var(--font-mono)', marginBottom: '20px' }}
             placeholder="••••"
             value={passkeyInput}
             onChange={(e) => {
               setPasskeyInput(e.target.value);
               setErrorMsg('');
             }}
+            maxLength={8}
             autoFocus
           />
 
-          {/* Sci-Fi Virtual Keypad */}
+          {/* Virtual Keypad */}
           <div className="keypad-grid">
             {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((digit) => (
               <button
@@ -121,34 +111,41 @@ export default function PasskeyModal({ email, user, onVerified, onCancel }) {
                 {digit}
               </button>
             ))}
-            <button type="button" className="key-btn" style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }} onClick={handleClear}>
+            <button 
+              type="button" 
+              className="key-btn" 
+              style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }} 
+              onClick={handleClear}
+            >
               CLR
             </button>
             <button type="button" className="key-btn" onClick={() => handleKeyPress('0')}>
               0
             </button>
-            <button type="button" className="key-btn" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }} onClick={handleDelete}>
-              <Delete size={18} />
+            <button type="button" className="key-btn" onClick={handleDelete} title="Delete">
+              <Delete size={20} />
             </button>
           </div>
 
-          <button
-            type="submit"
-            className="btn-primary"
-            style={{ marginTop: '24px' }}
-            disabled={loading || !passkeyInput}
-          >
-            {loading ? (
-              <span>VERIFYING PASSKEY...</span>
-            ) : (
-              <>
-                <CheckCircle size={18} />
-                <span>UNLOCK FRIDAY VAULT</span>
-              </>
-            )}
-          </button>
+          <div className="action-button-container">
+            <button
+              type="submit"
+              className="btn-primary"
+              disabled={loading || !passkeyInput}
+            >
+              {loading ? (
+                <span>VERIFYING PASSKEY...</span>
+              ) : (
+                <>
+                  <CheckCircle size={18} />
+                  <span>UNLOCK FRIDAY VAULT</span>
+                </>
+              )}
+            </button>
+          </div>
         </form>
       </div>
     </div>
   );
 }
+
