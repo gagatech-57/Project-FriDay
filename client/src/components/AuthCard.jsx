@@ -10,7 +10,8 @@ import {
   UserPlus, 
   ShieldCheck, 
   AlertCircle,
-  CheckCircle2
+  CheckCircle2,
+  Check
 } from 'lucide-react';
 import { loginUser, registerUser } from '../services/api';
 
@@ -22,6 +23,7 @@ export default function AuthCard({ onLoginSuccess, onRequirePasskey }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [passkey, setPasskey] = useState('');
+  const [rememberMe, setRememberMe] = useState(true);
 
   // UI state
   const [showPassword, setShowPassword] = useState(false);
@@ -52,7 +54,7 @@ export default function AuthCard({ onLoginSuccess, onRequirePasskey }) {
 
     if (activeTab === 'login') {
       if (!email || !password) {
-        setErrorMsg('Please fill in both Email and Password.');
+        setErrorMsg('Please enter both Email and Password.');
         setLoading(false);
         return;
       }
@@ -62,7 +64,6 @@ export default function AuthCard({ onLoginSuccess, onRequirePasskey }) {
 
       if (res.success) {
         setSuccessMsg(res.message);
-        // Trigger passkey prompt modal
         setTimeout(() => {
           onRequirePasskey({ email, user: res.user, token: res.token });
         }, 800);
@@ -93,7 +94,7 @@ export default function AuthCard({ onLoginSuccess, onRequirePasskey }) {
       setLoading(false);
 
       if (res.success) {
-        setSuccessMsg('Account created successfully! Proceeding to Passkey verification...');
+        setSuccessMsg('Account created! Proceeding to Passkey verification...');
         setTimeout(() => {
           onRequirePasskey({ email, user: res.user, token: res.token });
         }, 1000);
@@ -104,150 +105,172 @@ export default function AuthCard({ onLoginSuccess, onRequirePasskey }) {
   };
 
   return (
-    <div className="glass-card">
-      {/* Navigation Tabs */}
-      <div className="tab-switcher">
-        <button
-          type="button"
-          className={`tab-btn ${activeTab === 'login' ? 'active' : ''}`}
-          onClick={() => handleTabSwitch('login')}
-        >
-          <LogIn size={15} />
-          SIGN IN
-        </button>
-        <button
-          type="button"
-          className={`tab-btn ${activeTab === 'register' ? 'active' : ''}`}
-          onClick={() => handleTabSwitch('register')}
-        >
-          <UserPlus size={15} />
-          CREATE ACCOUNT
-        </button>
-      </div>
-
-      {/* Notifications */}
-      {errorMsg && (
-        <div className="alert-box alert-error">
-          <AlertCircle size={18} />
-          <span>{errorMsg}</span>
+    <div className="glass-card-wrapper">
+      <div className="glass-card">
+        {/* Card Header Banner */}
+        <div className="card-header-banner">
+          <h2 className="card-header-title">
+            {activeTab === 'login' ? 'MEMBER LOGIN' : 'CREATE ACCOUNT'}
+          </h2>
         </div>
-      )}
 
-      {successMsg && (
-        <div className="alert-box alert-success">
-          <CheckCircle2 size={18} />
-          <span>{successMsg}</span>
-        </div>
-      )}
-
-      {/* Auth Form */}
-      <form onSubmit={handleSubmit} autoComplete="off">
-        {/* Name Field (Register Mode Only) */}
-        {activeTab === 'register' && (
-          <div className="form-group">
-            <label className="form-label">FULL NAME</label>
-            <div className="input-wrapper">
-              <input
-                type="text"
-                className="input-field"
-                placeholder="e.g. Tony Stark"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-              />
-              <User size={18} className="input-icon" />
+        <div className="card-body">
+          {/* Notifications */}
+          {errorMsg && (
+            <div className="alert-box alert-error">
+              <AlertCircle size={16} />
+              <span>{errorMsg}</span>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Email Field */}
-        <div className="form-group">
-          <label className="form-label">EMAIL ADDRESS</label>
-          <div className="input-wrapper">
-            <input
-              type="email"
-              className="input-field"
-              placeholder="friday@starkindustries.io"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-            <Mail size={18} className="input-icon" />
-          </div>
-        </div>
+          {successMsg && (
+            <div className="alert-box alert-success">
+              <CheckCircle2 size={16} />
+              <span>{successMsg}</span>
+            </div>
+          )}
 
-        {/* Password Field */}
-        <div className="form-group">
-          <label className="form-label">
-            <span>PASSWORD</span>
-            {activeTab === 'register' && <span style={{ fontSize: '0.7rem', color: '#718096' }}>Min 6 chars</span>}
-          </label>
-          <div className="input-wrapper">
-            <input
-              type={showPassword ? 'text' : 'password'}
-              className="input-field"
-              placeholder="••••••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-            <Lock size={18} className="input-icon" />
-            <button
-              type="button"
-              className="input-toggle-btn"
-              onClick={() => setShowPassword(!showPassword)}
-            >
-              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
-          </div>
-        </div>
+          {/* Form */}
+          <form onSubmit={handleSubmit} autoComplete="off">
+            {/* Name Field (Register Mode Only) */}
+            {activeTab === 'register' && (
+              <div className="form-group">
+                <div className="input-wrapper">
+                  <input
+                    type="text"
+                    className="input-field"
+                    placeholder="YOUR FIRST & LAST NAME"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                  />
+                  <User size={18} className="input-icon" />
+                </div>
+              </div>
+            )}
 
-        {/* Passkey Field (Register Mode Only) */}
-        {activeTab === 'register' && (
-          <div className="form-group">
-            <label className="form-label">
-              <span>SECURITY PASSKEY (PIN)</span>
-              <span style={{ fontSize: '0.7rem', color: 'var(--cyan-glow)' }}>Used to unlock vault</span>
-            </label>
-            <div className="input-wrapper">
-              <input
-                type={showPasskey ? 'text' : 'password'}
-                className="input-field"
-                placeholder="4-8 Digit Passkey"
-                value={passkey}
-                onChange={(e) => setPasskey(e.target.value)}
-                maxLength={8}
-                required
-              />
-              <KeyRound size={18} className="input-icon" />
-              <button
-                type="button"
-                className="input-toggle-btn"
-                onClick={() => setShowPasskey(!showPasskey)}
-              >
-                {showPasskey ? <EyeOff size={16} /> : <Eye size={16} />}
+            {/* Email Field */}
+            <div className="form-group">
+              <div className="input-wrapper">
+                <input
+                  type="email"
+                  className="input-field"
+                  placeholder="YOUR E-MAIL ADDRESS"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+                <Mail size={18} className="input-icon" />
+              </div>
+            </div>
+
+            {/* Password Field */}
+            <div className="form-group">
+              <div className="input-wrapper">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  className="input-field"
+                  placeholder="YOUR PASSWORD"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+                <Lock size={18} className="input-icon" />
+                <button
+                  type="button"
+                  className="input-toggle-btn"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
+
+            {/* Passkey Field (Register Mode Only) */}
+            {activeTab === 'register' && (
+              <div className="form-group">
+                <div className="input-wrapper">
+                  <input
+                    type={showPasskey ? 'text' : 'password'}
+                    className="input-field"
+                    placeholder="YOUR 4-DIGIT PASSKEY (PIN)"
+                    value={passkey}
+                    onChange={(e) => setPasskey(e.target.value)}
+                    maxLength={8}
+                    required
+                  />
+                  <KeyRound size={18} className="input-icon" />
+                  <button
+                    type="button"
+                    className="input-toggle-btn"
+                    onClick={() => setShowPasskey(!showPasskey)}
+                  >
+                    {showPasskey ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Submit Glossy Pill Button */}
+            <div className="action-button-container">
+              <button type="submit" className="btn-glossy-pill" disabled={loading}>
+                {loading ? (
+                  <span>AUTHENTICATING...</span>
+                ) : activeTab === 'login' ? (
+                  <span>LOGIN</span>
+                ) : (
+                  <span>REGISTER ACCOUNT</span>
+                )}
               </button>
             </div>
-          </div>
-        )}
 
-        {/* Submit Button */}
-        <button type="submit" className="btn-primary" disabled={loading}>
-          {loading ? (
-            <span>AUTHENTICATING...</span>
-          ) : activeTab === 'login' ? (
-            <>
-              <LogIn size={18} />
-              <span>SIGN IN TO VAULT</span>
-            </>
-          ) : (
-            <>
-              <ShieldCheck size={18} />
-              <span>CREATE SECURE ACCOUNT</span>
-            </>
-          )}
-        </button>
-      </form>
+            {/* Remember Me Checkbox & Options */}
+            {activeTab === 'login' && (
+              <div className="form-options">
+                <label className="checkbox-label" onClick={() => setRememberMe(!rememberMe)}>
+                  <div className={`custom-checkbox ${rememberMe ? 'checked' : ''}`}>
+                    {rememberMe && <Check size={12} strokeWidth={3} />}
+                  </div>
+                  <span>Remember me</span>
+                </label>
+                <a href="#forgot" className="forgot-link" onClick={(e) => e.preventDefault()}>
+                  Forgot password?
+                </a>
+              </div>
+            )}
+          </form>
+        </div>
+
+        {/* Bottom Toggle Footer */}
+        <div className="card-footer">
+          <div className="footer-divider"></div>
+          <p className="footer-text">
+            {activeTab === 'login' ? (
+              <>
+                Not a member?{' '}
+                <button
+                  type="button"
+                  className="footer-link-btn"
+                  onClick={() => handleTabSwitch('register')}
+                >
+                  CREATE ACCOUNT
+                </button>
+              </>
+            ) : (
+              <>
+                Already a member?{' '}
+                <button
+                  type="button"
+                  className="footer-link-btn"
+                  onClick={() => handleTabSwitch('login')}
+                >
+                  SIGN IN
+                </button>
+              </>
+            )}
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
