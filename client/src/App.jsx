@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Shield } from 'lucide-react';
 import AuthCard from './components/AuthCard';
 import PasskeyModal from './components/PasskeyModal';
@@ -10,6 +10,22 @@ export default function App() {
   const [authSession, setAuthSession] = useState(null); // { email, user, token }
   const [currentUser, setCurrentUser] = useState(null);
 
+  // Auto-restore saved session from localStorage on app start
+  useEffect(() => {
+    try {
+      const savedSession = localStorage.getItem('pf_user_session');
+      if (savedSession) {
+        const parsedUser = JSON.parse(savedSession);
+        if (parsedUser && parsedUser.email) {
+          setCurrentUser(parsedUser);
+          setStage('vault_dashboard');
+        }
+      }
+    } catch (err) {
+      console.warn('Could not restore local user session:', err);
+    }
+  }, []);
+
   const handleRequirePasskey = (sessionData) => {
     setAuthSession(sessionData);
     setStage('passkey_challenge');
@@ -18,12 +34,22 @@ export default function App() {
   const handlePasskeyVerified = (verifiedUserData) => {
     setCurrentUser(verifiedUserData);
     setStage('vault_dashboard');
+    try {
+      localStorage.setItem('pf_user_session', JSON.stringify(verifiedUserData));
+    } catch (err) {
+      console.warn('Could not save user session locally:', err);
+    }
   };
 
   const handleLogout = () => {
     setAuthSession(null);
     setCurrentUser(null);
     setStage('auth');
+    try {
+      localStorage.removeItem('pf_user_session');
+    } catch (err) {
+      console.warn('Could not remove user session:', err);
+    }
   };
 
   const containerClass = stage === 'vault_dashboard' 

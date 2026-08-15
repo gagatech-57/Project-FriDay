@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   User, 
   Mail, 
@@ -10,7 +10,8 @@ import {
   UserPlus, 
   AlertCircle,
   CheckCircle2,
-  Check
+  Check,
+  BookmarkCheck
 } from 'lucide-react';
 import { loginUser, registerUser } from '../services/api';
 
@@ -31,9 +32,21 @@ export default function AuthCard({ onRequirePasskey }) {
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
+  // Auto-fill saved email on mount
+  useEffect(() => {
+    try {
+      const savedEmail = localStorage.getItem('pf_saved_email');
+      if (savedEmail) {
+        setEmail(savedEmail);
+        setRememberMe(true);
+      }
+    } catch (err) {
+      console.warn('Could not read saved email:', err);
+    }
+  }, []);
+
   const resetForm = () => {
     setName('');
-    setEmail('');
     setPassword('');
     setPasskey('');
     setErrorMsg('');
@@ -70,6 +83,17 @@ export default function AuthCard({ onRequirePasskey }) {
     setErrorMsg('');
     setSuccessMsg('');
     setLoading(true);
+
+    // Save or clear remembered email
+    try {
+      if (rememberMe && email) {
+        localStorage.setItem('pf_saved_email', email);
+      } else {
+        localStorage.removeItem('pf_saved_email');
+      }
+    } catch (err) {
+      console.warn('Could not update saved email:', err);
+    }
 
     if (activeTab === 'login') {
       if (!email || !password) {
@@ -118,7 +142,7 @@ export default function AuthCard({ onRequirePasskey }) {
           onRequirePasskey({ email, user: res.user, token: res.token });
         }, 800);
       } else {
-        setErrorMsg(res.message || 'Registration failed.');
+        setErrorMsg(res.message || 'Registration failed. Please try again.');
       }
     }
   };
@@ -261,6 +285,19 @@ export default function AuthCard({ onRequirePasskey }) {
                 </div>
               </div>
             )}
+
+            {/* Remember Me / Save Login Session Checkbox */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '14px 0 16px', cursor: 'pointer' }} onClick={() => setRememberMe(!rememberMe)}>
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                style={{ width: '16px', height: '16px', accentColor: 'var(--primary-accent)', cursor: 'pointer' }}
+              />
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: '500' }}>
+                Save login session on this device
+              </span>
+            </div>
 
             {/* Submit Action Button */}
             <div className="action-button-container">
