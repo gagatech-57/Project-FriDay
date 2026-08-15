@@ -165,24 +165,24 @@ export default function AuthCard({ onRequirePasskey }) {
             {/* Name Field (Register Mode Only) */}
             {activeTab === 'register' && (
               <div className="form-group">
-                <label className="input-label">FULL NAME</label>
+                <label className="input-label">Full Name</label>
                 <div className="input-wrapper">
                   <input
                     type="text"
                     className="input-field"
-                    placeholder="e.g. Alex Mercer"
+                    placeholder="Alex Mercer"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
                   />
-                  <User size={18} className="input-icon" />
+                  <User size={16} className="input-icon" />
                 </div>
               </div>
             )}
 
             {/* Email Field */}
             <div className="form-group">
-              <label className="input-label">EMAIL ADDRESS</label>
+              <label className="input-label">Email Address</label>
               <div className="input-wrapper">
                 <input
                   type="email"
@@ -192,13 +192,13 @@ export default function AuthCard({ onRequirePasskey }) {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                 />
-                <Mail size={18} className="input-icon" />
+                <Mail size={16} className="input-icon" />
               </div>
             </div>
 
             {/* Password Field */}
             <div className="form-group">
-              <label className="input-label">ACCOUNT PASSWORD</label>
+              <label className="input-label">Password</label>
               <div className="input-wrapper">
                 <input
                   type={showPassword ? 'text' : 'password'}
@@ -208,14 +208,14 @@ export default function AuthCard({ onRequirePasskey }) {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                 />
-                <Lock size={18} className="input-icon" />
+                <Lock size={16} className="input-icon" />
                 <button
                   type="button"
                   className="input-toggle-btn"
                   onClick={() => setShowPassword(!showPassword)}
                   title={showPassword ? "Hide password" : "Show password"}
                 >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
               </div>
 
@@ -238,25 +238,25 @@ export default function AuthCard({ onRequirePasskey }) {
             {/* Passkey Field (Register Mode Only) */}
             {activeTab === 'register' && (
               <div className="form-group">
-                <label className="input-label">SECURITY PASSKEY (4-8 PIN)</label>
+                <label className="input-label">Security Passkey (PIN)</label>
                 <div className="input-wrapper">
                   <input
                     type={showPasskey ? 'text' : 'password'}
                     className="input-field"
-                    placeholder="e.g. 1234"
+                    placeholder="4-digit PIN"
                     value={passkey}
                     onChange={(e) => setPasskey(e.target.value)}
                     maxLength={8}
                     required
                   />
-                  <KeyRound size={18} className="input-icon" />
+                  <KeyRound size={16} className="input-icon" />
                   <button
                     type="button"
                     className="input-toggle-btn"
                     onClick={() => setShowPasskey(!showPasskey)}
                     title={showPasskey ? "Hide passkey" : "Show passkey"}
                   >
-                    {showPasskey ? <EyeOff size={16} /> : <Eye size={16} />}
+                    {showPasskey ? <EyeOff size={15} /> : <Eye size={15} />}
                   </button>
                 </div>
               </div>
@@ -266,16 +266,16 @@ export default function AuthCard({ onRequirePasskey }) {
             <div className="action-button-container">
               <button type="submit" className="btn-glossy-pill" disabled={loading}>
                 {loading ? (
-                  <span>AUTHENTICATING...</span>
+                  <span>Authenticating...</span>
                 ) : activeTab === 'login' ? (
                   <>
-                    <LogIn size={18} />
-                    <span>AUTHENTICATE & ACCESS</span>
+                    <LogIn size={16} />
+                    <span>Sign In to Vault</span>
                   </>
                 ) : (
                   <>
-                    <UserPlus size={18} />
-                    <span>CREATE FRIDAY ACCOUNT</span>
+                    <UserPlus size={16} />
+                    <span>Create Account</span>
                   </>
                 )}
               </button>
@@ -291,7 +291,7 @@ export default function AuthCard({ onRequirePasskey }) {
                   tabIndex={0}
                 >
                   <div className={`custom-checkbox ${rememberMe ? 'checked' : ''}`}>
-                    {rememberMe && <Check size={14} strokeWidth={3} />}
+                    {rememberMe && <Check size={12} strokeWidth={3} />}
                   </div>
                   <span>Remember me</span>
                 </div>
@@ -308,24 +308,24 @@ export default function AuthCard({ onRequirePasskey }) {
           <p className="footer-text">
             {activeTab === 'login' ? (
               <>
-                New to Friday Vault?{' '}
+                Don't have an account?{' '}
                 <button
                   type="button"
                   className="footer-link-btn"
                   onClick={() => handleTabSwitch('register')}
                 >
-                  CREATE AN ACCOUNT
+                  Create account
                 </button>
               </>
             ) : (
               <>
-                Already registered?{' '}
+                Already have an account?{' '}
                 <button
                   type="button"
                   className="footer-link-btn"
                   onClick={() => handleTabSwitch('login')}
                 >
-                  SIGN IN TO ACCOUNT
+                  Sign in
                 </button>
               </>
             )}

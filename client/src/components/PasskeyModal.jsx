@@ -58,20 +58,20 @@ export default function PasskeyModal({ email, user, onVerified, onCancel }) {
           </div>
         </div>
 
-        <div className="brand-icon-wrapper" style={{ width: '64px', height: '64px', margin: '0 auto 14px' }}>
-          <KeyRound size={28} color="var(--cyan-accent)" />
+        <div className="brand-icon-wrapper" style={{ width: '48px', height: '48px', margin: '0 auto 10px' }}>
+          <KeyRound size={22} color="var(--primary-accent)" />
         </div>
 
-        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.3rem', color: '#fff', marginBottom: '6px' }}>
-          PASSKEY REQUIRED
+        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', color: 'var(--text-primary)', marginBottom: '4px', fontWeight: '700' }}>
+          Passkey Required
         </h3>
-        <p style={{ fontSize: '0.84rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
-          Enter PIN for <span style={{ color: 'var(--cyan-accent)', fontWeight: '600' }}>{email}</span>
+        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '14px' }}>
+          Enter PIN for <span style={{ color: 'var(--primary-accent)', fontWeight: '600' }}>{email}</span>
         </p>
 
         {errorMsg && (
           <div className="alert-box alert-error">
-            <AlertCircle size={16} />
+            <AlertCircle size={15} />
             <span>{errorMsg}</span>
           </div>
         )}
@@ -88,7 +88,7 @@ export default function PasskeyModal({ email, user, onVerified, onCancel }) {
           <input
             type="password"
             className="input-field"
-            style={{ textAlign: 'center', letterSpacing: '8px', fontSize: '1.5rem', fontFamily: 'var(--font-mono)', marginBottom: '20px' }}
+            style={{ textAlign: 'center', letterSpacing: '6px', fontSize: '1.2rem', fontFamily: 'var(--font-mono)', marginBottom: '14px' }}
             placeholder="••••"
             value={passkeyInput}
             onChange={(e) => {
@@ -114,7 +114,7 @@ export default function PasskeyModal({ email, user, onVerified, onCancel }) {
             <button 
               type="button" 
               className="key-btn" 
-              style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }} 
+              style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }} 
               onClick={handleClear}
             >
               CLR
@@ -123,7 +123,7 @@ export default function PasskeyModal({ email, user, onVerified, onCancel }) {
               0
             </button>
             <button type="button" className="key-btn" onClick={handleDelete} title="Delete">
-              <Delete size={20} />
+              <Delete size={18} />
             </button>
           </div>
 
@@ -134,11 +134,11 @@ export default function PasskeyModal({ email, user, onVerified, onCancel }) {
               disabled={loading || !passkeyInput}
             >
               {loading ? (
-                <span>VERIFYING PASSKEY...</span>
+                <span>Verifying...</span>
               ) : (
                 <>
-                  <CheckCircle size={18} />
-                  <span>UNLOCK FRIDAY VAULT</span>
+                  <CheckCircle size={16} />
+                  <span>Unlock Security Vault</span>
                 </>
               )}
             </button>

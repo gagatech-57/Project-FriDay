@@ -40,11 +40,10 @@ export default function App() {
         {stage !== 'vault_dashboard' && (
           <header className="brand-header">
             <div className="brand-icon-wrapper">
-              <div className="pulse-ring"></div>
-              <Shield size={36} color="var(--cyan-accent)" />
+              <Shield size={28} color="var(--primary-accent)" />
             </div>
-            <h1 className="brand-title">PROJECT FRIDAY</h1>
-            <p className="brand-subtitle">SECURE DATA VAULT & AUTHENTICATION</p>
+            <h1 className="brand-title">Project Friday</h1>
+            <p className="brand-subtitle">Encrypted Data Vault & Security Stage 1</p>
           </header>
         )}
 
