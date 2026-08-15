@@ -26,6 +26,10 @@ export default function App() {
     setStage('auth');
   };
 
+  const containerClass = stage === 'vault_dashboard' 
+    ? 'app-container app-dashboard-mode' 
+    : 'app-container app-auth-mode';
+
   return (
     <>
       {/* Background canvas effects */}
@@ -35,7 +39,7 @@ export default function App() {
         <div className="glow-orb glow-orb-2"></div>
       </div>
 
-      <div className="app-container">
+      <div className={containerClass}>
         {/* Top Header Branding (visible during auth & passkey challenge) */}
         {stage !== 'vault_dashboard' && (
           <header className="brand-header">
@@ -73,4 +77,5 @@ export default function App() {
     </>
   );
 }
+
 
