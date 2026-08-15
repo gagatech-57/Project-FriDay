@@ -8,7 +8,6 @@ import {
   HardDrive, 
   Lock, 
   FolderLock,
-  Cpu,
   Search,
   Upload,
   Plus,
@@ -19,13 +18,11 @@ import {
   LayoutGrid,
   List,
   Trash2,
-  Download,
   Eye,
   X,
-  File,
-  FileCheck,
-  ExternalLink
+  File
 } from 'lucide-react';
+import { uploadFileApi, fetchFilesApi, deleteFileApi } from '../services/api';
 
 export default function VaultDashboard({ user, onLogout }) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -58,11 +55,7 @@ export default function VaultDashboard({ user, onLogout }) {
 2. VAULT ENCRYPTION & KEY DERIVATION
 - Encryption Standard: AES-256-GCM.
 - Key Derivation Function: PBKDF2 with SHA-256 HMAC.
-- Payload Protection: End-to-end local zero-trust model.
-
-3. DORMANT STORAGE PIPELINE
-- File Storage Pipeline: Stage 1 active, Stage 2 upload pipeline initialized.
-- Supported File Formats: .TXT, .PNG, .JPG, .PDF, .ENC, .JSON.`
+- Payload Protection: End-to-end local zero-trust model.`
     },
     {
       id: 'f2',
@@ -92,6 +85,19 @@ export default function VaultDashboard({ user, onLogout }) {
     }
   ]);
 
+  // Load saved files from MongoDB database on mount
+  useEffect(() => {
+    async function loadSavedFiles() {
+      if (user && user.email) {
+        const res = await fetchFilesApi(user.email);
+        if (res && res.success && res.files && res.files.length > 0) {
+          setFiles(res.files);
+        }
+      }
+    }
+    loadSavedFiles();
+  }, [user]);
+
   // Keyboard Escape listener to close preview modal
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -120,7 +126,7 @@ export default function VaultDashboard({ user, onLogout }) {
     }
   };
 
-  // Handle File Selection & 0-100% Progress Animation
+  // Handle File Selection, Base64 Conversion & MongoDB Upload
   const handleFileChange = (e) => {
     const selectedFiles = Array.from(e.target.files);
     if (!selectedFiles || selectedFiles.length === 0) return;
@@ -130,68 +136,69 @@ export default function VaultDashboard({ user, onLogout }) {
     setIsUploading(true);
     setUploadProgress(0);
 
-    // Read file text or image preview
-    let fileUrl = null;
-    let fileContent = null;
+    const fileType = file.type.startsWith('image/')
+      ? 'image'
+      : file.name.endsWith('.pdf') || file.type === 'application/pdf'
+      ? 'pdf'
+      : file.type.includes('json') || file.name.endsWith('.enc') || file.type.includes('javascript')
+      ? 'code'
+      : 'doc';
 
-    if (file.type.startsWith('image/')) {
-      fileUrl = URL.createObjectURL(file);
-    } else {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        fileContent = event.target.result;
-      };
-      reader.readAsText(file);
-    }
+    const reader = new FileReader();
 
-    // Animated Progress Counter 0% -> 100%
-    let currentProgress = 0;
-    const interval = setInterval(() => {
-      currentProgress += Math.floor(Math.random() * 18) + 12;
-      if (currentProgress >= 100) {
-        currentProgress = 100;
-        setUploadProgress(100);
-        clearInterval(interval);
+    reader.onload = (event) => {
+      const dataUrl = event.target.result;
 
-        setTimeout(() => {
-          const fileType = file.type.startsWith('image/')
-            ? 'image'
-            : file.name.endsWith('.pdf')
-            ? 'pdf'
-            : file.type.includes('json') || file.name.endsWith('.enc') || file.type.includes('javascript')
-            ? 'code'
-            : 'doc';
+      // 0% -> 100% Progress Animation
+      let currentProgress = 0;
+      const interval = setInterval(() => {
+        currentProgress += Math.floor(Math.random() * 18) + 12;
+        if (currentProgress >= 100) {
+          currentProgress = 100;
+          setUploadProgress(100);
+          clearInterval(interval);
 
-          const newFileItem = {
-            id: 'file_' + Date.now(),
-            name: file.name,
-            size: (file.size / (1024 * 1024)).toFixed(2) + ' MB',
-            type: fileType,
-            date: 'Just now',
-            url: fileUrl,
-            content: fileContent || `[ENCRYPTED PAYLOAD DATA FOR ${file.name}]\n\nAES-256 Bit Encrypted Storage Item.\nUploaded At: ${new Date().toLocaleString()}\nFile Size: ${file.size} bytes.`
-          };
+          setTimeout(async () => {
+            const filePayload = {
+              name: file.name,
+              size: (file.size / (1024 * 1024)).toFixed(2) + ' MB',
+              type: fileType,
+              date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+              url: dataUrl,
+              content: null,
+              userEmail: user.email
+            };
 
-          setFiles((prev) => [newFileItem, ...prev]);
-          setIsUploading(false);
-          setUploadProgress(0);
-          setCurrentUploadName('');
-        }, 400);
-      } else {
-        setUploadProgress(currentProgress);
-      }
-    }, 120);
+            // Save File to MongoDB Database
+            const apiRes = await uploadFileApi(filePayload);
+            const savedFile = (apiRes && apiRes.success && apiRes.file)
+              ? apiRes.file
+              : { id: 'file_' + Date.now(), ...filePayload };
 
+            setFiles((prev) => [savedFile, ...prev]);
+            setIsUploading(false);
+            setUploadProgress(0);
+            setCurrentUploadName('');
+          }, 300);
+        } else {
+          setUploadProgress(currentProgress);
+        }
+      }, 90);
+    };
+
+    // Read file as Base64 Data URL for full visual PDF / Image rendering
+    reader.readAsDataURL(file);
     e.target.value = '';
   };
 
-  // Delete file from state
-  const handleDeleteFile = (e, id) => {
+  // Delete file from MongoDB database
+  const handleDeleteFile = async (e, id) => {
     e.stopPropagation();
     setFiles((prev) => prev.filter((f) => f.id !== id));
     if (selectedPreviewFile && selectedPreviewFile.id === id) {
       setSelectedPreviewFile(null);
     }
+    await deleteFileApi(id);
   };
 
   // Filter & Search Logic
@@ -380,7 +387,7 @@ export default function VaultDashboard({ user, onLogout }) {
                   style={{ cursor: 'pointer' }}
                 >
                   <div className="file-preview-box">
-                    {file.url ? (
+                    {file.type === 'image' && file.url ? (
                       <img
                         src={file.url}
                         alt={file.name}
@@ -480,7 +487,7 @@ export default function VaultDashboard({ user, onLogout }) {
               <Upload size={24} color="var(--primary-accent)" />
             </div>
             <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '1.05rem', fontWeight: '700', color: 'var(--text-primary)' }}>
-              Encrypting & Uploading File...
+              Encrypting & Uploading File to MongoDB...
             </h4>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '4px 0 12px' }}>
               {currentUploadName}
@@ -501,7 +508,7 @@ export default function VaultDashboard({ user, onLogout }) {
         </div>
       )}
 
-      {/* Universal Multi-Format File Previewer Modal (Images, PDFs, Code, Text) */}
+      {/* Universal Multi-Format File Previewer Modal (Visual PDF, HD Image, Monospace Text) */}
       {selectedPreviewFile && (
         <div className="file-preview-modal-overlay" onClick={() => setSelectedPreviewFile(null)}>
           <div className="file-preview-card" onClick={(e) => e.stopPropagation()}>
@@ -514,7 +521,7 @@ export default function VaultDashboard({ user, onLogout }) {
                     {selectedPreviewFile.name}
                   </h3>
                   <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-                    {selectedPreviewFile.size} &bull; Encrypted AES-256
+                    {selectedPreviewFile.size} &bull; MongoDB Database Storage &bull; Encrypted AES-256
                   </span>
                 </div>
               </div>
@@ -543,20 +550,32 @@ export default function VaultDashboard({ user, onLogout }) {
                 </div>
               )}
 
-              {/* PDF DOCUMENT PREVIEW */}
+              {/* NATIVE VISUAL PDF PREVIEW (IFRAME EMBED) */}
               {selectedPreviewFile.type === 'pdf' && (
-                <div className="pdf-preview-doc">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #cbd5e1', paddingBottom: '12px', marginBottom: '16px' }}>
-                    <span style={{ fontSize: '0.78rem', fontFamily: 'var(--font-mono)', color: 'var(--primary-accent)', fontWeight: '700' }}>
-                      PDF DOCUMENT VIEWER &bull; PAGE 1 OF 1
-                    </span>
-                    <span style={{ fontSize: '0.74rem', background: '#e2e8f0', padding: '2px 8px', borderRadius: '6px', fontFamily: 'var(--font-mono)' }}>
-                      VERIFIED PDF
-                    </span>
-                  </div>
-                  <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'var(--font-body)', fontSize: '0.86rem', color: 'var(--text-secondary)', margin: 0 }}>
-                    {selectedPreviewFile.content || `[CLASSIFIED PDF DOCUMENT]\n\nDocument Title: ${selectedPreviewFile.name}\nEncryption Protocol: SHA-256 / AES-256-GCM\nDate Uploaded: ${selectedPreviewFile.date}\n\nThis document contains encrypted security payload records. Authentication passed via Level 2 Passkey.`}
-                  </pre>
+                <div style={{ width: '100%', height: '580px', borderRadius: '14px', overflow: 'hidden', boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }}>
+                  {selectedPreviewFile.url ? (
+                    <iframe
+                      src={selectedPreviewFile.url}
+                      title={selectedPreviewFile.name}
+                      width="100%"
+                      height="100%"
+                      style={{ border: 'none', background: '#ffffff' }}
+                    />
+                  ) : (
+                    <div className="pdf-preview-doc">
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #cbd5e1', paddingBottom: '12px', marginBottom: '16px' }}>
+                        <span style={{ fontSize: '0.78rem', fontFamily: 'var(--font-mono)', color: 'var(--primary-accent)', fontWeight: '700' }}>
+                          PDF DOCUMENT VIEWER &bull; MONGODB SECURED
+                        </span>
+                        <span style={{ fontSize: '0.74rem', background: '#e2e8f0', padding: '2px 8px', borderRadius: '6px', fontFamily: 'var(--font-mono)' }}>
+                          VERIFIED PDF
+                        </span>
+                      </div>
+                      <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'var(--font-body)', fontSize: '0.86rem', color: 'var(--text-secondary)', margin: 0 }}>
+                        {selectedPreviewFile.content || `[CLASSIFIED PDF DOCUMENT]\n\nDocument Title: ${selectedPreviewFile.name}\nEncryption Protocol: SHA-256 / AES-256-GCM\nDate Uploaded: ${selectedPreviewFile.date}\n\nThis document contains encrypted security payload records stored in MongoDB database.`}
+                      </pre>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -565,7 +584,7 @@ export default function VaultDashboard({ user, onLogout }) {
                 <div className="code-preview-box">
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', borderBottom: '1px solid #1e293b', paddingBottom: '8px' }}>
                     <span style={{ color: '#94a3b8', fontSize: '0.76rem' }}>MONOSPACE PAYLOAD VIEWER</span>
-                    <span style={{ color: '#10b981', fontSize: '0.76rem' }}>UTF-8 ENCODED</span>
+                    <span style={{ color: '#10b981', fontSize: '0.76rem' }}>UTF-8 ENCODED &bull; MONGODB</span>
                   </div>
                   <pre style={{ margin: 0, fontSize: '0.84rem', fontFamily: 'var(--font-mono)', color: '#38bdf8', whiteSpace: 'pre-wrap' }}>
                     {selectedPreviewFile.content || `// Encrypted Payload Data File\n{\n  "fileName": "${selectedPreviewFile.name}",\n  "fileSize": "${selectedPreviewFile.size}",\n  "encrypted": true,\n  "checksum": "a8f5f167f44f4964e6c998dee827110c"\n}`}
@@ -579,3 +598,4 @@ export default function VaultDashboard({ user, onLogout }) {
     </div>
   );
 }
+

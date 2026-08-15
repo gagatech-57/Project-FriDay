@@ -53,3 +53,50 @@ export async function verifyPasskey(email, passkey) {
     };
   }
 }
+
+// File API Endpoints (MongoDB Backend)
+export async function uploadFileApi(filePayload) {
+  try {
+    const response = await fetch('/api/files/upload', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(filePayload)
+    });
+    return await response.json();
+  } catch (error) {
+    return {
+      success: false,
+      message: 'Network Error uploading file to database.'
+    };
+  }
+}
+
+export async function fetchFilesApi(email) {
+  try {
+    const url = email ? `/api/files?email=${encodeURIComponent(email)}` : '/api/files';
+    const response = await fetch(url);
+    return await response.json();
+  } catch (error) {
+    return {
+      success: false,
+      files: []
+    };
+  }
+}
+
+export async function deleteFileApi(fileId) {
+  try {
+    const response = await fetch(`/api/files/${fileId}`, {
+      method: 'DELETE'
+    });
+    return await response.json();
+  } catch (error) {
+    return {
+      success: false,
+      message: 'Network Error deleting file.'
+    };
+  }
+}
+
