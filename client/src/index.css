@@ -877,9 +877,8 @@ body {
 
 /* Dashboard Content Grid */
 .dashboard-grid-layout {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 20px;
+  display: block;
+  width: 100%;
 }
 
 @media (max-width: 840px) {

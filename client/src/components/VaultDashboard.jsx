@@ -177,10 +177,6 @@ export default function VaultDashboard({ user, onLogout }) {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div className="status-indicator" style={{ background: 'rgba(16, 185, 129, 0.1)', padding: '6px 12px', borderRadius: '10px' }}>
-            <Cpu size={14} /> MONGODB ACTIVE
-          </div>
-
           <button onClick={onLogout} className="btn-secondary">
             <LogOut size={15} />
             <span>Sign Out</span>
@@ -406,42 +402,6 @@ export default function VaultDashboard({ user, onLogout }) {
               </table>
             </div>
           )}
-        </div>
-
-        {/* Security Audit Activity Log Panel */}
-        <div className="dashboard-panel-card">
-          <h3 className="panel-title">
-            <Activity size={18} color="var(--primary-accent)" /> Security Activity Log
-          </h3>
-
-          <div className="activity-list">
-            <div className="activity-item">
-              <CheckCircle size={15} color="#10b981" />
-              <div>
-                <div className="activity-text">Passkey Verified</div>
-                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Level 2 PIN challenge</div>
-              </div>
-              <div className="activity-time">Just now</div>
-            </div>
-
-            <div className="activity-item">
-              <Key size={15} color="#2563eb" />
-              <div>
-                <div className="activity-text">Email Authenticated</div>
-                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Password hash match</div>
-              </div>
-              <div className="activity-time">1 min ago</div>
-            </div>
-
-            <div className="activity-item">
-              <Database size={15} color="#0d9488" />
-              <div>
-                <div className="activity-text">MongoDB Connected</div>
-                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Local 127.0.0.1:27017</div>
-              </div>
-              <div className="activity-time">Active</div>
-            </div>
-          </div>
         </div>
       </div>
 
