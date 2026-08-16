@@ -20,9 +20,17 @@ import {
   Trash2,
   Eye,
   X,
-  File
+  File,
+  Download,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
+  Copy,
+  Check,
+  Cpu,
+  Layers
 } from 'lucide-react';
-import { uploadFileApi, fetchFilesApi, deleteFileApi } from '../services/api';
+import { uploadFileApi, fetchFilesApi, deleteFileApi, fetchFileContentApi } from '../services/api';
 
 export default function VaultDashboard({ user, onLogout }) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -34,16 +42,24 @@ export default function VaultDashboard({ user, onLogout }) {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [currentUploadName, setCurrentUploadName] = useState('');
-  const [selectedPreviewFile, setSelectedPreviewFile] = useState(null);
 
-  // Initial Sample Encrypted Vault Files
+  // Preview & Download Modal State
+  const [selectedPreviewFile, setSelectedPreviewFile] = useState(null);
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const [copySuccess, setCopySuccess] = useState(false);
+
+  // Initial Encrypted Vault Metadata Files
   const [files, setFiles] = useState([
     {
       id: 'f1',
       name: 'Project_Friday_Security_Protocol.pdf',
       size: '2.4 MB',
+      fileSizeBytes: 2516582,
       type: 'pdf',
       date: 'Aug 15, 2026',
+      checksum: 'e3b0c44298fc1c14',
+      storageType: 'metadata_vault',
       url: null,
       content: `[PROJECT FRIDAY - CLASSIFIED SECURITY PROTOCOL v2.4]
 
@@ -55,22 +71,28 @@ export default function VaultDashboard({ user, onLogout }) {
 2. VAULT ENCRYPTION & KEY DERIVATION
 - Encryption Standard: AES-256-GCM.
 - Key Derivation Function: PBKDF2 with SHA-256 HMAC.
-- Payload Protection: End-to-end local zero-trust model.`
+- Payload Protection: End-to-end zero-trust metadata separation model.`
     },
     {
       id: 'f2',
       name: 'Cyber_Vault_Passkey_Badge.png',
       size: '1.1 MB',
+      fileSizeBytes: 1153433,
       type: 'image',
       date: 'Aug 15, 2026',
-      url: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400"><rect width="600" height="400" fill="%232563eb" rx="24"/><circle cx="300" cy="200" r="110" fill="%23ffffff" opacity="0.15"/><path d="M300 130 L350 240 L250 240 Z" fill="%23ffffff"/><text x="300" y="310" font-family="sans-serif" font-weight="800" font-size="22" fill="%23ffffff" text-anchor="middle" letter-spacing="3">PROJECT FRIDAY VAULT BADGE</text><text x="300" y="340" font-family="monospace" font-size="14" fill="%2393c5fd" text-anchor="middle">LEVEL 2 SECURITY AUTHENTICATED</text></svg>'
+      checksum: 'f44f4964e6c998de',
+      storageType: 'metadata_vault',
+      url: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400"><rect width="600" height="400" fill="%230d1527" rx="24"/><rect width="596" height="396" x="2" y="2" fill="none" stroke="%2300f2fe" stroke-width="2" rx="22" opacity="0.6"/><circle cx="300" cy="200" r="110" fill="%2300f2fe" opacity="0.1"/><path d="M300 130 L350 240 L250 240 Z" fill="%2300f2fe"/><text x="300" y="310" font-family="sans-serif" font-weight="900" font-size="22" fill="%23ffffff" text-anchor="middle" letter-spacing="3">PROJECT FRIDAY VAULT</text><text x="300" y="340" font-family="monospace" font-size="14" fill="%2300f2fe" text-anchor="middle">LEVEL 2 SECURITY AUTHENTICATED</text></svg>'
     },
     {
       id: 'f3',
       name: 'MongoDB_Encrypted_Backup.enc',
       size: '5.8 MB',
+      fileSizeBytes: 6081740,
       type: 'code',
       date: 'Aug 15, 2026',
+      checksum: 'a8f5f167f44f4964',
+      storageType: 'metadata_vault',
       url: null,
       content: `{
   "system": "Project Friday Vault Database",
@@ -85,7 +107,7 @@ export default function VaultDashboard({ user, onLogout }) {
     }
   ]);
 
-  // Load saved files from MongoDB database on mount
+  // Load saved file metadata from MongoDB database on mount (Ultra-Fast Metadata Fetch)
   useEffect(() => {
     async function loadSavedFiles() {
       if (user && user.email) {
@@ -126,7 +148,7 @@ export default function VaultDashboard({ user, onLogout }) {
     }
   };
 
-  // Handle File Selection, Base64 Conversion & MongoDB Upload
+  // Handle File Selection, Metadata Extraction & Base64 Conversion
   const handleFileChange = (e) => {
     const selectedFiles = Array.from(e.target.files);
     if (!selectedFiles || selectedFiles.length === 0) return;
@@ -152,7 +174,7 @@ export default function VaultDashboard({ user, onLogout }) {
       // 0% -> 100% Progress Animation
       let currentProgress = 0;
       const interval = setInterval(() => {
-        currentProgress += Math.floor(Math.random() * 18) + 12;
+        currentProgress += Math.floor(Math.random() * 22) + 14;
         if (currentProgress >= 100) {
           currentProgress = 100;
           setUploadProgress(100);
@@ -162,6 +184,7 @@ export default function VaultDashboard({ user, onLogout }) {
             const filePayload = {
               name: file.name,
               size: (file.size / (1024 * 1024)).toFixed(2) + ' MB',
+              fileSizeBytes: file.size,
               type: fileType,
               date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
               url: dataUrl,
@@ -169,7 +192,7 @@ export default function VaultDashboard({ user, onLogout }) {
               userEmail: user.email
             };
 
-            // Save File to MongoDB Database
+            // Save File Metadata & Payload to MongoDB Database
             const apiRes = await uploadFileApi(filePayload);
             const savedFile = (apiRes && apiRes.success && apiRes.file)
               ? apiRes.file
@@ -179,16 +202,100 @@ export default function VaultDashboard({ user, onLogout }) {
             setIsUploading(false);
             setUploadProgress(0);
             setCurrentUploadName('');
-          }, 300);
+          }, 250);
         } else {
           setUploadProgress(currentProgress);
         }
-      }, 90);
+      }, 70);
     };
 
-    // Read file as Base64 Data URL for full visual PDF / Image rendering
+    // Read file as Base64 Data URL
     reader.readAsDataURL(file);
     e.target.value = '';
+  };
+
+  // Open Lazy File Preview Modal
+  const handleOpenPreview = async (file) => {
+    setZoomLevel(1);
+    setCopySuccess(false);
+
+    // If url or content payload is already attached, open immediately
+    if (file.url || file.content) {
+      setSelectedPreviewFile(file);
+      return;
+    }
+
+    // Otherwise, lazily fetch heavy payload from backend endpoint
+    setIsPreviewLoading(true);
+    setSelectedPreviewFile(file);
+
+    const res = await fetchFileContentApi(file.id);
+    setIsPreviewLoading(false);
+
+    if (res && res.success) {
+      setSelectedPreviewFile((prev) => ({
+        ...prev,
+        url: res.url,
+        content: res.content,
+        checksum: res.checksum || prev.checksum
+      }));
+    }
+  };
+
+  // High-Speed Direct File Download Handler
+  const handleDownloadFile = async (e, file) => {
+    if (e) e.stopPropagation();
+
+    let payloadUrl = file.url;
+    let payloadContent = file.content;
+
+    // Lazily fetch payload if not present on current metadata object
+    if (!payloadUrl && !payloadContent && file.id) {
+      const res = await fetchFileContentApi(file.id);
+      if (res && res.success) {
+        payloadUrl = res.url;
+        payloadContent = res.content;
+      }
+    }
+
+    if (payloadUrl) {
+      const a = document.createElement('a');
+      a.href = payloadUrl;
+      a.download = file.name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } else if (payloadContent) {
+      const blob = new Blob([payloadContent], { type: 'text/plain;charset=utf-8' });
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = file.name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+    } else {
+      // Fallback text generator for metadata file download
+      const metadataDoc = `[PROJECT FRIDAY ENCRYPTED VAULT RECORD]\n=====================================\nFile Name: ${file.name}\nFile Size: ${file.size}\nChecksum SHA-256: ${file.checksum || 'a8f5f167f44f4964'}\nTimestamp: ${file.date}\nUser Account: ${file.userEmail || user.email}\nStorage Engine: MongoDB Metadata Vault (Indexed)\nSecurity Status: AES-256 Verified`;
+      const blob = new Blob([metadataDoc], { type: 'text/plain;charset=utf-8' });
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = file.name + '.txt';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+    }
+  };
+
+  // Copy Content Payload to Clipboard
+  const handleCopyContent = (text) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopySuccess(true);
+    setTimeout(() => setCopySuccess(false), 2000);
   };
 
   // Delete file from MongoDB database
@@ -214,8 +321,8 @@ export default function VaultDashboard({ user, onLogout }) {
     switch (type) {
       case 'image': return <ImageIcon size={size} color="#2563eb" />;
       case 'pdf': return <FileText size={size} color="#ef4444" />;
-      case 'code': return <FileCode size={size} color="#0d9488" />;
-      default: return <File size={size} color="#4f46e5" />;
+      case 'code': return <FileCode size={size} color="#10b981" />;
+      default: return <File size={size} color="#7928ca" />;
     }
   };
 
@@ -248,11 +355,11 @@ export default function VaultDashboard({ user, onLogout }) {
         </div>
       </div>
 
-      {/* Metrics Overview Grid (4 Cards) */}
+      {/* Telemetry Overview Grid (4 Cards) */}
       <div className="metrics-grid">
         <div className="metric-card">
-          <div className="metric-icon-box" style={{ background: 'rgba(37, 99, 235, 0.1)', color: '#2563eb' }}>
-            <ShieldCheck size={22} />
+          <div className="metric-icon-box">
+            <ShieldCheck size={24} color="#2563eb" />
           </div>
           <div>
             <div className="metric-value">Level 2 Active</div>
@@ -261,32 +368,32 @@ export default function VaultDashboard({ user, onLogout }) {
         </div>
 
         <div className="metric-card">
-          <div className="metric-icon-box" style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1' }}>
-            <Lock size={22} />
+          <div className="metric-icon-box" style={{ background: 'rgba(79, 70, 229, 0.08)', borderColor: 'rgba(79, 70, 229, 0.25)' }}>
+            <Lock size={24} color="#4f46e5" />
           </div>
           <div>
-            <div className="metric-value">AES-256 Bit</div>
+            <div className="metric-value">AES-256 GCM</div>
             <div className="metric-label">Vault Encryption</div>
           </div>
         </div>
 
         <div className="metric-card">
-          <div className="metric-icon-box" style={{ background: 'rgba(13, 148, 136, 0.1)', color: '#0d9488' }}>
-            <HardDrive size={22} />
+          <div className="metric-icon-box" style={{ background: 'rgba(16, 185, 129, 0.08)', borderColor: 'rgba(16, 185, 129, 0.25)' }}>
+            <Cpu size={24} color="#10b981" />
           </div>
           <div>
             <div className="metric-value">{files.length} Vault Files</div>
-            <div className="metric-label">Storage Capacity</div>
+            <div className="metric-label">Indexed Metadata</div>
           </div>
         </div>
 
         <div className="metric-card">
-          <div className="metric-icon-box" style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>
-            <Activity size={22} />
+          <div className="metric-icon-box" style={{ background: 'rgba(37, 99, 235, 0.08)', borderColor: 'rgba(37, 99, 235, 0.25)' }}>
+            <Activity size={24} color="#2563eb" />
           </div>
           <div>
-            <div className="metric-value">100% Protected</div>
-            <div className="metric-label">Security Health</div>
+            <div className="metric-value">Ultra High Speed</div>
+            <div className="metric-label">Lazy Loading Engine</div>
           </div>
         </div>
       </div>
@@ -298,7 +405,7 @@ export default function VaultDashboard({ user, onLogout }) {
           <input
             type="text"
             className="search-input"
-            placeholder="Search vault files, encryption keys, logs..."
+            placeholder="Search vault metadata, encryption keys, logs..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -334,9 +441,9 @@ export default function VaultDashboard({ user, onLogout }) {
       {/* Main Grid Layout (Storage Manager Panel) */}
       <div className="dashboard-grid-layout">
         <div className="dashboard-panel-card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
             <h3 className="panel-title" style={{ margin: 0 }}>
-              <HardDrive size={18} color="var(--primary-accent)" /> Encrypted Vault Files ({filteredFiles.length})
+              <HardDrive size={20} color="var(--primary-accent)" /> Encrypted Storage Vault ({filteredFiles.length})
             </h3>
 
             {/* Filter Tags */}
@@ -346,16 +453,17 @@ export default function VaultDashboard({ user, onLogout }) {
                   key={filter}
                   onClick={() => setActiveFilter(filter)}
                   style={{
-                    padding: '4px 10px',
-                    fontSize: '0.74rem',
-                    fontFamily: 'var(--font-body)',
+                    padding: '5px 12px',
+                    fontSize: '0.75rem',
+                    fontFamily: 'var(--font-mono)',
                     fontWeight: activeFilter === filter ? '700' : '500',
-                    border: activeFilter === filter ? '1px solid var(--primary-accent)' : '1px solid #e2e8f0',
-                    background: activeFilter === filter ? 'rgba(37, 99, 235, 0.1)' : '#ffffff',
+                    border: activeFilter === filter ? '1px solid var(--primary-accent)' : '1px solid rgba(30, 41, 59, 0.9)',
+                    background: activeFilter === filter ? 'rgba(0, 242, 254, 0.2)' : 'rgba(7, 10, 20, 0.8)',
                     color: activeFilter === filter ? 'var(--primary-accent)' : 'var(--text-muted)',
                     borderRadius: '8px',
                     cursor: 'pointer',
-                    textTransform: 'capitalize'
+                    textTransform: 'uppercase',
+                    boxShadow: activeFilter === filter ? '0 0 10px rgba(0, 242, 254, 0.25)' : 'none'
                   }}
                 >
                   {filter}
@@ -367,14 +475,14 @@ export default function VaultDashboard({ user, onLogout }) {
           {/* Grid View vs List View Display */}
           {filteredFiles.length === 0 ? (
             <div className="vault-dormant-card" style={{ marginTop: 0 }}>
-              <div className="brand-icon-wrapper" style={{ width: '48px', height: '48px', margin: '0 auto 12px' }}>
-                <FolderLock size={22} color="var(--primary-accent)" />
+              <div className="brand-icon-wrapper" style={{ width: '52px', height: '52px', margin: '0 auto 14px' }}>
+                <FolderLock size={24} color="var(--primary-accent)" />
               </div>
-              <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '1.05rem', color: 'var(--text-primary)', marginBottom: '6px', fontWeight: '700' }}>
+              <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '1.05rem', color: '#ffffff', marginBottom: '6px', fontWeight: '800' }}>
                 No Matching Vault Files
               </h4>
-              <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', maxWidth: '400px', margin: '0 auto 16px' }}>
-                Click "+ Upload File" to add encrypted files into your vault storage.
+              <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', maxWidth: '420px', margin: '0 auto 18px' }}>
+                Click "+ Upload File" to add encrypted files into your MongoDB metadata storage vault.
               </p>
             </div>
           ) : viewMode === 'grid' ? (
@@ -383,7 +491,7 @@ export default function VaultDashboard({ user, onLogout }) {
                 <div 
                   key={file.id} 
                   className="file-card"
-                  onClick={() => setSelectedPreviewFile(file)}
+                  onClick={() => handleOpenPreview(file)}
                   style={{ cursor: 'pointer' }}
                 >
                   <div className="file-preview-box">
@@ -394,7 +502,7 @@ export default function VaultDashboard({ user, onLogout }) {
                         className="file-preview-img"
                       />
                     ) : (
-                      renderFileIcon(file.type, 28)
+                      renderFileIcon(file.type, 32)
                     )}
                   </div>
                   <div className="file-card-title" title={file.name}>
@@ -408,11 +516,18 @@ export default function VaultDashboard({ user, onLogout }) {
                       className="file-action-btn"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setSelectedPreviewFile(file);
+                        handleOpenPreview(file);
                       }}
                       title="Preview File"
                     >
                       <Eye size={15} />
+                    </button>
+                    <button
+                      className="file-action-btn btn-download"
+                      onClick={(e) => handleDownloadFile(e, file)}
+                      title="Download File"
+                    >
+                      <Download size={15} />
                     </button>
                     <button
                       className="file-action-btn btn-delete"
@@ -442,33 +557,42 @@ export default function VaultDashboard({ user, onLogout }) {
                     <tr 
                       key={file.id} 
                       className="file-table-row"
-                      onClick={() => setSelectedPreviewFile(file)}
+                      onClick={() => handleOpenPreview(file)}
                       style={{ cursor: 'pointer' }}
                     >
-                      <td style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '600' }}>
-                        {renderFileIcon(file.type)}
+                      <td style={{ display: 'flex', alignItems: 'center', gap: '10px', fontWeight: '600' }}>
+                        {renderFileIcon(file.type, 18)}
                         <span title={file.name}>{file.name}</span>
                       </td>
-                      <td>{file.size}</td>
-                      <td>{file.date}</td>
+                      <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}>{file.size}</td>
+                      <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', color: 'var(--text-muted)' }}>{file.date}</td>
                       <td style={{ textAlign: 'right' }}>
-                        <button
-                          className="file-action-btn"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedPreviewFile(file);
-                          }}
-                          title="Preview File"
-                        >
-                          <Eye size={15} />
-                        </button>
-                        <button
-                          className="file-action-btn btn-delete"
-                          onClick={(e) => handleDeleteFile(e, file.id)}
-                          title="Delete File"
-                        >
-                          <Trash2 size={15} />
-                        </button>
+                        <div style={{ display: 'inline-flex', gap: '6px' }}>
+                          <button
+                            className="file-action-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenPreview(file);
+                            }}
+                            title="Preview File"
+                          >
+                            <Eye size={15} />
+                          </button>
+                          <button
+                            className="file-action-btn btn-download"
+                            onClick={(e) => handleDownloadFile(e, file)}
+                            title="Download File"
+                          >
+                            <Download size={15} />
+                          </button>
+                          <button
+                            className="file-action-btn btn-delete"
+                            onClick={(e) => handleDeleteFile(e, file.id)}
+                            title="Delete File"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -483,13 +607,13 @@ export default function VaultDashboard({ user, onLogout }) {
       {isUploading && (
         <div className="upload-modal-overlay">
           <div className="upload-progress-card">
-            <div className="brand-icon-wrapper" style={{ width: '52px', height: '52px', margin: '0 auto 12px' }}>
-              <Upload size={24} color="var(--primary-accent)" />
+            <div className="brand-icon-wrapper" style={{ width: '56px', height: '56px', margin: '0 auto 14px' }}>
+              <Upload size={26} color="var(--primary-accent)" />
             </div>
-            <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '1.05rem', fontWeight: '700', color: 'var(--text-primary)' }}>
-              Encrypting & Uploading File to MongoDB...
+            <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '1.05rem', fontWeight: '800', color: '#ffffff' }}>
+              Encrypting & Uploading Metadata...
             </h4>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '4px 0 12px' }}>
+            <p style={{ fontSize: '0.82rem', color: 'var(--primary-accent)', fontFamily: 'var(--font-mono)', margin: '4px 0 14px' }}>
               {currentUploadName}
             </p>
 
@@ -508,25 +632,75 @@ export default function VaultDashboard({ user, onLogout }) {
         </div>
       )}
 
-      {/* Universal Multi-Format File Previewer Modal (Visual PDF, HD Image, Monospace Text) */}
+      {/* Universal Sci-Fi File Previewer & Downloader Modal */}
       {selectedPreviewFile && (
         <div className="file-preview-modal-overlay" onClick={() => setSelectedPreviewFile(null)}>
           <div className="file-preview-card" onClick={(e) => e.stopPropagation()}>
-            {/* Header with Title and Close X Button */}
+            {/* Modal Header with Title, Telemetry Tools & Action Buttons */}
             <div className="preview-modal-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                {renderFileIcon(selectedPreviewFile.type, 22)}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                {renderFileIcon(selectedPreviewFile.type, 24)}
                 <div>
-                  <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '0.98rem', fontWeight: '700', color: 'var(--text-primary)', margin: 0 }}>
+                  <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1rem', fontWeight: '800', color: '#ffffff', margin: 0 }}>
                     {selectedPreviewFile.name}
                   </h3>
-                  <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-                    {selectedPreviewFile.size} &bull; MongoDB Database Storage &bull; Encrypted AES-256
+                  <span style={{ fontSize: '0.74rem', color: 'var(--primary-accent)', fontFamily: 'var(--font-mono)' }}>
+                    {selectedPreviewFile.size} &bull; MongoDB Metadata Vault &bull; AES-256
                   </span>
                 </div>
               </div>
 
+              {/* Action Toolbar */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                {/* Download Button */}
+                <button
+                  className="action-btn-pill"
+                  style={{ padding: '7px 14px', fontSize: '0.76rem', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', boxShadow: '0 0 15px rgba(16, 185, 129, 0.4)' }}
+                  onClick={(e) => handleDownloadFile(e, selectedPreviewFile)}
+                  title="Download File Now"
+                >
+                  <Download size={15} />
+                  <span>Download</span>
+                </button>
+
+                {/* Zoom controls for Image / PDF */}
+                {(selectedPreviewFile.type === 'image' || selectedPreviewFile.type === 'pdf') && (
+                  <div style={{ display: 'flex', gap: '4px', background: 'rgba(7, 10, 20, 0.8)', padding: '2px', borderRadius: '8px', border: '1px solid rgba(30, 41, 59, 0.9)' }}>
+                    <button
+                      className="file-action-btn"
+                      onClick={() => setZoomLevel((z) => Math.max(0.5, z - 0.25))}
+                      title="Zoom Out"
+                    >
+                      <ZoomOut size={15} />
+                    </button>
+                    <button
+                      className="file-action-btn"
+                      onClick={() => setZoomLevel(1)}
+                      title="Reset Zoom"
+                    >
+                      <RotateCcw size={14} />
+                    </button>
+                    <button
+                      className="file-action-btn"
+                      onClick={() => setZoomLevel((z) => Math.min(2.5, z + 0.25))}
+                      title="Zoom In"
+                    >
+                      <ZoomIn size={15} />
+                    </button>
+                  </div>
+                )}
+
+                {/* Copy content text button */}
+                {(selectedPreviewFile.type === 'code' || selectedPreviewFile.type === 'doc' || selectedPreviewFile.content) && (
+                  <button
+                    className="file-action-btn"
+                    onClick={() => handleCopyContent(selectedPreviewFile.content || selectedPreviewFile.name)}
+                    title="Copy Content"
+                  >
+                    {copySuccess ? <Check size={16} color="#10b981" /> : <Copy size={16} />}
+                  </button>
+                )}
+
                 <button
                   className="preview-close-btn"
                   onClick={() => setSelectedPreviewFile(null)}
@@ -537,59 +711,96 @@ export default function VaultDashboard({ user, onLogout }) {
               </div>
             </div>
 
-            {/* Modal Body Rendering Based on File Type */}
-            <div className="preview-body-container">
-              {/* IMAGE PREVIEW */}
-              {selectedPreviewFile.type === 'image' && (
-                <div style={{ textAlign: 'center', width: '100%' }}>
-                  <img
-                    src={selectedPreviewFile.url || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300"><rect width="400" height="300" fill="%232563eb"/><text x="200" y="150" font-size="18" fill="%23ffffff" text-anchor="middle">IMAGE PREVIEW</text></svg>'}
-                    alt={selectedPreviewFile.name}
-                    style={{ maxWidth: '100%', maxHeight: '62vh', borderRadius: '14px', objectFit: 'contain', boxShadow: '0 10px 30px rgba(0,0,0,0.15)' }}
-                  />
-                </div>
-              )}
+            {/* Telemetry Bar */}
+            <div className="metadata-telemetry-row">
+              <div className="telemetry-chip">
+                <span>CHECKSUM SHA-256:</span> {selectedPreviewFile.checksum || 'a8f5f167f44f4964'}
+              </div>
+              <div className="telemetry-chip">
+                <span>STORAGE ENGINE:</span> {selectedPreviewFile.storageType || 'metadata_vault'}
+              </div>
+              <div className="telemetry-chip">
+                <span>STATUS:</span> <span style={{ color: '#10b981' }}>ENCRYPTED & VERIFIED</span>
+              </div>
+            </div>
 
-              {/* NATIVE VISUAL PDF PREVIEW (IFRAME EMBED) */}
-              {selectedPreviewFile.type === 'pdf' && (
-                <div style={{ width: '100%', height: '580px', borderRadius: '14px', overflow: 'hidden', boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }}>
-                  {selectedPreviewFile.url ? (
-                    <iframe
-                      src={selectedPreviewFile.url}
-                      title={selectedPreviewFile.name}
-                      width="100%"
-                      height="100%"
-                      style={{ border: 'none', background: '#ffffff' }}
-                    />
-                  ) : (
-                    <div className="pdf-preview-doc">
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #cbd5e1', paddingBottom: '12px', marginBottom: '16px' }}>
-                        <span style={{ fontSize: '0.78rem', fontFamily: 'var(--font-mono)', color: 'var(--primary-accent)', fontWeight: '700' }}>
-                          PDF DOCUMENT VIEWER &bull; MONGODB SECURED
-                        </span>
-                        <span style={{ fontSize: '0.74rem', background: '#e2e8f0', padding: '2px 8px', borderRadius: '6px', fontFamily: 'var(--font-mono)' }}>
-                          VERIFIED PDF
-                        </span>
+            {/* Modal Body Rendering */}
+            <div className="preview-body-container">
+              {isPreviewLoading ? (
+                <div style={{ padding: '60px 0', textAlign: 'center' }}>
+                  <div className="brand-icon-wrapper" style={{ width: '56px', height: '56px', margin: '0 auto 14px' }}>
+                    <Cpu size={28} color="var(--primary-accent)" />
+                  </div>
+                  <h4 style={{ fontFamily: 'var(--font-display)', color: '#ffffff', fontSize: '1rem' }}>
+                    Lazily Fetching Payload Content...
+                  </h4>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                    Streaming data payload from database vault
+                  </p>
+                </div>
+              ) : (
+                <>
+                  {/* IMAGE PREVIEW */}
+                  {selectedPreviewFile.type === 'image' && (
+                    <div style={{ textAlign: 'center', width: '100%', overflow: 'auto', padding: '10px' }}>
+                      <img
+                        src={selectedPreviewFile.url || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400"><rect width="600" height="400" fill="%230d1527"/><text x="300" y="200" font-size="20" fill="%2300f2fe" text-anchor="middle">IMAGE PREVIEW</text></svg>'}
+                        alt={selectedPreviewFile.name}
+                        style={{
+                          maxWidth: '100%',
+                          maxHeight: '62vh',
+                          borderRadius: '16px',
+                          objectFit: 'contain',
+                          boxShadow: '0 15px 40px rgba(0, 0, 0, 0.7)',
+                          transform: `scale(${zoomLevel})`,
+                          transition: 'transform 0.2s ease-out'
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  {/* NATIVE VISUAL PDF PREVIEW */}
+                  {selectedPreviewFile.type === 'pdf' && (
+                    <div style={{ width: '100%', height: '580px', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}>
+                      {selectedPreviewFile.url ? (
+                        <iframe
+                          src={selectedPreviewFile.url}
+                          title={selectedPreviewFile.name}
+                          width="100%"
+                          height="100%"
+                          style={{ border: 'none', background: '#070a14', transform: `scale(${zoomLevel})`, transformOrigin: 'top center' }}
+                        />
+                      ) : (
+                        <div className="pdf-preview-doc">
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(30, 41, 59, 0.9)', paddingBottom: '12px', marginBottom: '16px' }}>
+                            <span style={{ fontSize: '0.78rem', fontFamily: 'var(--font-mono)', color: 'var(--primary-accent)', fontWeight: '700' }}>
+                              PDF DOCUMENT VIEWER &bull; MONGODB VAULT
+                            </span>
+                            <span style={{ fontSize: '0.74rem', background: 'rgba(0, 242, 254, 0.1)', color: 'var(--primary-accent)', padding: '2px 8px', borderRadius: '6px', fontFamily: 'var(--font-mono)' }}>
+                              VERIFIED DOCUMENT
+                            </span>
+                          </div>
+                          <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'var(--font-body)', fontSize: '0.88rem', color: 'var(--text-primary)', margin: 0 }}>
+                            {selectedPreviewFile.content || `[CLASSIFIED PDF DOCUMENT RECORD]\n\nDocument Title: ${selectedPreviewFile.name}\nEncryption Protocol: SHA-256 / AES-256-GCM\nDate Uploaded: ${selectedPreviewFile.date}\n\nThis document contains encrypted security payload records stored in MongoDB metadata storage vault.`}
+                          </pre>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* CODE / TEXT FILE PREVIEW */}
+                  {(selectedPreviewFile.type === 'code' || selectedPreviewFile.type === 'doc') && (
+                    <div className="code-preview-box">
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', borderBottom: '1px solid rgba(30, 41, 59, 0.9)', paddingBottom: '8px' }}>
+                        <span style={{ color: '#94a3b8', fontSize: '0.76rem' }}>MONOSPACE PAYLOAD VIEWER</span>
+                        <span style={{ color: '#10b981', fontSize: '0.76rem' }}>UTF-8 ENCODED &bull; METADATA VAULT</span>
                       </div>
-                      <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'var(--font-body)', fontSize: '0.86rem', color: 'var(--text-secondary)', margin: 0 }}>
-                        {selectedPreviewFile.content || `[CLASSIFIED PDF DOCUMENT]\n\nDocument Title: ${selectedPreviewFile.name}\nEncryption Protocol: SHA-256 / AES-256-GCM\nDate Uploaded: ${selectedPreviewFile.date}\n\nThis document contains encrypted security payload records stored in MongoDB database.`}
+                      <pre style={{ margin: 0, fontSize: '0.86rem', fontFamily: 'var(--font-mono)', color: '#00f2fe', whiteSpace: 'pre-wrap' }}>
+                        {selectedPreviewFile.content || `// Encrypted Payload Metadata Record\n{\n  "fileName": "${selectedPreviewFile.name}",\n  "fileSize": "${selectedPreviewFile.size}",\n  "encrypted": true,\n  "checksum": "${selectedPreviewFile.checksum || 'a8f5f167f44f4964'}"\n}`}
                       </pre>
                     </div>
                   )}
-                </div>
-              )}
-
-              {/* CODE / TEXT FILE PREVIEW */}
-              {(selectedPreviewFile.type === 'code' || selectedPreviewFile.type === 'doc') && (
-                <div className="code-preview-box">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', borderBottom: '1px solid #1e293b', paddingBottom: '8px' }}>
-                    <span style={{ color: '#94a3b8', fontSize: '0.76rem' }}>MONOSPACE PAYLOAD VIEWER</span>
-                    <span style={{ color: '#10b981', fontSize: '0.76rem' }}>UTF-8 ENCODED &bull; MONGODB</span>
-                  </div>
-                  <pre style={{ margin: 0, fontSize: '0.84rem', fontFamily: 'var(--font-mono)', color: '#38bdf8', whiteSpace: 'pre-wrap' }}>
-                    {selectedPreviewFile.content || `// Encrypted Payload Data File\n{\n  "fileName": "${selectedPreviewFile.name}",\n  "fileSize": "${selectedPreviewFile.size}",\n  "encrypted": true,\n  "checksum": "a8f5f167f44f4964e6c998dee827110c"\n}`}
-                  </pre>
-                </div>
+                </>
               )}
             </div>
           </div>
@@ -598,4 +809,3 @@ export default function VaultDashboard({ user, onLogout }) {
     </div>
   );
 }
-

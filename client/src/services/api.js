@@ -54,6 +54,53 @@ export async function verifyPasskey(email, passkey) {
   }
 }
 
+// WhatsApp & SMS Verification APIs
+export async function sendWhatsAppOtpApi(data) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/send-whatsapp-otp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(data)
+    });
+    return await response.json();
+  } catch (error) {
+    return {
+      success: false,
+      message: 'Network Error: Unable to send WhatsApp security code.'
+    };
+  }
+}
+
+export async function verifyWhatsAppOtpResetApi(data) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/verify-whatsapp-otp-reset`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(data)
+    });
+    return await response.json();
+  } catch (error) {
+    return {
+      success: false,
+      message: 'Network Error: Unable to verify WhatsApp OTP code.'
+    };
+  }
+}
+
+export async function sendSmsOtpApi(data) {
+  return sendWhatsAppOtpApi(data);
+}
+
+export async function verifySmsOtpResetApi(data) {
+  return verifyWhatsAppOtpResetApi(data);
+}
+
+
+
 // File API Endpoints (MongoDB Backend)
 export async function uploadFileApi(filePayload) {
   try {
@@ -86,6 +133,18 @@ export async function fetchFilesApi(email) {
   }
 }
 
+export async function fetchFileContentApi(fileId) {
+  try {
+    const response = await fetch(`/api/files/${fileId}/content`);
+    return await response.json();
+  } catch (error) {
+    return {
+      success: false,
+      message: 'Network Error loading file content payload.'
+    };
+  }
+}
+
 export async function deleteFileApi(fileId) {
   try {
     const response = await fetch(`/api/files/${fileId}`, {
@@ -99,4 +158,5 @@ export async function deleteFileApi(fileId) {
     };
   }
 }
+
 

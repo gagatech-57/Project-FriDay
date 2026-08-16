@@ -70,10 +70,10 @@ export default function App() {
         {stage !== 'vault_dashboard' && (
           <header className="brand-header">
             <div className="brand-icon-wrapper">
-              <Shield size={28} color="var(--primary-accent)" />
+              <Shield size={30} color="var(--primary-accent)" />
             </div>
             <h1 className="brand-title">Project Friday</h1>
-            <p className="brand-subtitle">Encrypted Data Vault & Security Stage 1</p>
+            <p className="brand-subtitle">CLASSIFIED DATA VAULT &bull; LEVEL 2 PROTOCOL</p>
           </header>
         )}
 
@@ -97,11 +97,12 @@ export default function App() {
 
         {/* Footer */}
         <footer className="app-footer">
-          PROJECT FRIDAY SYSTEM &bull; LOCAL MONGODB BACKEND &bull; STAGE 1
+          PROJECT FRIDAY SYSTEM &bull; MONGODB VAULT ENGINE &bull; LEVEL 2 VERIFIED
         </footer>
       </div>
     </>
   );
 }
+
 
 

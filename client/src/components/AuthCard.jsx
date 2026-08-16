@@ -11,9 +11,11 @@ import {
   AlertCircle,
   CheckCircle2,
   Check,
-  BookmarkCheck
+  Smartphone,
+  HelpCircle
 } from 'lucide-react';
 import { loginUser, registerUser } from '../services/api';
+import WhatsAppResetModal from './WhatsAppResetModal';
 
 export default function AuthCard({ onRequirePasskey }) {
   const [activeTab, setActiveTab] = useState('login'); // 'login' | 'register'
@@ -21,6 +23,7 @@ export default function AuthCard({ onRequirePasskey }) {
   // Form State
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [mobileNumber, setMobileNumber] = useState('');
   const [password, setPassword] = useState('');
   const [passkey, setPasskey] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
@@ -31,6 +34,7 @@ export default function AuthCard({ onRequirePasskey }) {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const [whatsappResetMode, setWhatsappResetMode] = useState(null); // null | 'password' | 'passkey'
 
   // Auto-fill saved email on mount
   useEffect(() => {
@@ -47,6 +51,7 @@ export default function AuthCard({ onRequirePasskey }) {
 
   const resetForm = () => {
     setName('');
+    setMobileNumber('');
     setPassword('');
     setPasskey('');
     setErrorMsg('');
@@ -133,7 +138,7 @@ export default function AuthCard({ onRequirePasskey }) {
         return;
       }
 
-      const res = await registerUser({ name, email, password, passkey });
+      const res = await registerUser({ name, email, mobileNumber, password, passkey });
       setLoading(false);
 
       if (res.success) {
@@ -149,6 +154,17 @@ export default function AuthCard({ onRequirePasskey }) {
 
   return (
     <div className="glass-card-wrapper">
+      {/* WhatsApp OTP Recovery Modal */}
+      {whatsappResetMode && (
+        <WhatsAppResetModal
+          initialMode={whatsappResetMode}
+          onClose={() => setWhatsappResetMode(null)}
+          onResetSuccess={() => {
+            setSuccessMsg('Credentials reset via WhatsApp OTP! Please sign in with updated credentials.');
+          }}
+        />
+      )}
+
       <div className="glass-card">
         {/* Interactive Tab Switcher Banner */}
         <div className="card-header-tabs">
@@ -219,6 +235,23 @@ export default function AuthCard({ onRequirePasskey }) {
                 <Mail size={16} className="input-icon" />
               </div>
             </div>
+
+            {/* Mobile Number Field (Register Mode) */}
+            {activeTab === 'register' && (
+              <div className="form-group">
+                <label className="input-label">Mobile Phone Number (WhatsApp Alerts)</label>
+                <div className="input-wrapper">
+                  <input
+                    type="tel"
+                    className="input-field"
+                    placeholder="+1 (555) 019-2834"
+                    value={mobileNumber}
+                    onChange={(e) => setMobileNumber(e.target.value)}
+                  />
+                  <Smartphone size={16} className="input-icon" />
+                </div>
+              </div>
+            )}
 
             {/* Password Field */}
             <div className="form-group">
@@ -320,21 +353,40 @@ export default function AuthCard({ onRequirePasskey }) {
 
             {/* Remember Me & Options */}
             {activeTab === 'login' && (
-              <div className="form-options">
-                <div 
-                  className="checkbox-label" 
-                  onClick={() => setRememberMe(!rememberMe)}
-                  role="button"
-                  tabIndex={0}
-                >
-                  <div className={`custom-checkbox ${rememberMe ? 'checked' : ''}`}>
-                    {rememberMe && <Check size={12} strokeWidth={3} />}
+              <div className="form-options" style={{ flexDirection: 'column', gap: '8px', alignItems: 'flex-start' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                  <div 
+                    className="checkbox-label" 
+                    onClick={() => setRememberMe(!rememberMe)}
+                    role="button"
+                    tabIndex={0}
+                  >
+                    <div className={`custom-checkbox ${rememberMe ? 'checked' : ''}`}>
+                      {rememberMe && <Check size={12} strokeWidth={3} />}
+                    </div>
+                    <span>Remember me</span>
                   </div>
-                  <span>Remember me</span>
+
+                  <button 
+                    type="button" 
+                    className="forgot-link" 
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                    onClick={() => setWhatsappResetMode('password')}
+                  >
+                    Forgot Password? (WhatsApp)
+                  </button>
                 </div>
-                <a href="#forgot" className="forgot-link" onClick={(e) => e.preventDefault()}>
-                  Forgot password?
-                </a>
+
+                <div style={{ width: '100%', textAlign: 'right' }}>
+                  <button 
+                    type="button" 
+                    className="forgot-link" 
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'var(--primary-accent)', fontSize: '0.78rem' }}
+                    onClick={() => setWhatsappResetMode('passkey')}
+                  >
+                    Reset Passkey PIN via WhatsApp OTP
+                  </button>
+                </div>
               </div>
             )}
           </form>
@@ -372,4 +424,3 @@ export default function AuthCard({ onRequirePasskey }) {
     </div>
   );
 }
-
