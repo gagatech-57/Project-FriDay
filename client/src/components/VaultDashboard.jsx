@@ -29,7 +29,8 @@ import {
   Check,
   Cpu,
   Layers,
-  ExternalLink
+  ExternalLink,
+  ChevronDown
 } from 'lucide-react';
 import { uploadFileApi, fetchFilesApi, deleteFileApi, fetchFileContentApi } from '../services/api';
 
@@ -64,6 +65,10 @@ export default function VaultDashboard({ user, onLogout }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
+
+  // Profile Popover Dropdown Menu State
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const profileMenuRef = useRef(null);
 
   // File Upload & Progress State
   const fileInputRef = useRef(null);
@@ -149,15 +154,15 @@ export default function VaultDashboard({ user, onLogout }) {
     loadSavedFiles();
   }, [user]);
 
-  // Keyboard Escape listener to close preview modal
+  // Close profile dropdown menu on outside click
   useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape') {
-        setSelectedPreviewFile(null);
+    const handleClickOutside = (e) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target)) {
+        setShowProfileMenu(false);
       }
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const getInitials = (name) => {
@@ -373,19 +378,74 @@ export default function VaultDashboard({ user, onLogout }) {
 
       {/* Top Application Header */}
       <div className="dashboard-header">
-        <div className="user-badge">
-          <div className="avatar">{getInitials(user.name)}</div>
+        {/* Left: Brand Logo Title & Welcome Greeting */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div className="brand-icon-wrapper" style={{ width: '44px', height: '44px' }}>
+            <ShieldCheck size={26} color="var(--primary-accent)" />
+          </div>
           <div>
-            <h2 className="dashboard-title">{user.name || 'Agent Vault'}</h2>
-            <p className="dashboard-email">{user.email}</p>
+            <h2 className="dashboard-title" style={{ fontSize: '1.25rem', lineHeight: '1.2' }}>
+              Project Friday
+            </h2>
+            <p className="dashboard-email" style={{ color: 'var(--primary-accent)', fontWeight: '700', fontSize: '0.84rem', fontFamily: 'var(--font-display)', marginTop: '2px' }}>
+              Welcome back, {user.name || 'Guna'}
+            </p>
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <button onClick={onLogout} className="btn-secondary">
-            <LogOut size={15} />
-            <span>Sign Out</span>
-          </button>
+        {/* Right: Interactive Profile Avatar Badge & Dropdown */}
+        <div className="profile-dropdown-wrapper" ref={profileMenuRef}>
+          <div 
+            className="profile-trigger-btn"
+            onClick={() => setShowProfileMenu(!showProfileMenu)}
+            role="button"
+            tabIndex={0}
+            title="View Profile & Options"
+          >
+            <div className="avatar" style={{ width: '38px', height: '38px', fontSize: '0.95rem' }}>
+              {getInitials(user.name)}
+            </div>
+            <div style={{ textAlign: 'left' }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontWeight: '700', fontSize: '0.85rem', color: 'var(--text-primary)', lineHeight: '1.2' }}>
+                {user.name || 'Guna'}
+              </div>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+                {user.email}
+              </div>
+            </div>
+            <ChevronDown size={16} color="#64748b" style={{ transform: showProfileMenu ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease' }} />
+          </div>
+
+          {/* Profile Popover Menu */}
+          {showProfileMenu && (
+            <div className="profile-popover-menu">
+              <div className="popover-user-info">
+                <div className="avatar" style={{ width: '42px', height: '42px', fontSize: '1rem', flexShrink: 0 }}>
+                  {getInitials(user.name)}
+                </div>
+                <div style={{ overflow: 'hidden' }}>
+                  <h4 style={{ fontFamily: 'var(--font-display)', fontWeight: '800', fontSize: '0.92rem', color: 'var(--text-primary)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {user.name}
+                  </h4>
+                  <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {user.email}
+                  </span>
+                </div>
+              </div>
+
+              <div style={{ padding: '8px 10px', background: 'rgba(37, 99, 235, 0.06)', borderRadius: '10px', border: '1px solid rgba(37, 99, 235, 0.15)', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <CheckCircle size={14} color="#10b981" />
+                <span style={{ fontSize: '0.74rem', fontFamily: 'var(--font-mono)', color: '#2563eb', fontWeight: '700' }}>
+                  Level 2 Verified &bull; MongoDB Vault
+                </span>
+              </div>
+
+              <button onClick={onLogout} className="popover-logout-btn">
+                <LogOut size={15} />
+                <span>Sign Out</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
