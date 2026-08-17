@@ -1,28 +1,25 @@
 import React, { useState } from 'react';
-import { ShieldAlert, KeyRound, ArrowLeft, CheckCircle, AlertCircle, Delete } from 'lucide-react';
+import { ShieldAlert, KeyRound, ArrowLeft, CheckCircle, AlertCircle } from 'lucide-react';
 import { verifyPasskey } from '../services/api';
+
+const maskEmail = (emailStr) => {
+  if (!emailStr || typeof emailStr !== 'string' || !emailStr.includes('@')) return emailStr;
+  const [name, domain] = emailStr.split('@');
+  const maskedName = name.length > 1 ? name[0] + '*'.repeat(name.length - 1) : name;
+  const domainParts = domain.split('.');
+  if (domainParts.length >= 2) {
+    const mainDomain = domainParts[0];
+    const extension = domainParts.slice(1).join('.');
+    const maskedDomain = mainDomain.length > 1 ? mainDomain[0] + '*'.repeat(mainDomain.length - 1) : mainDomain;
+    return `${maskedName}@${maskedDomain}.${extension}`;
+  }
+  return `${maskedName}@${domain}`;
+};
 
 export default function PasskeyModal({ email, user, onVerified, onCancel }) {
   const [passkeyInput, setPasskeyInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
-
-  const handleKeyPress = (num) => {
-    if (passkeyInput.length < 8) {
-      setPasskeyInput((prev) => prev + num);
-      setErrorMsg('');
-    }
-  };
-
-  const handleDelete = () => {
-    setPasskeyInput((prev) => prev.slice(0, -1));
-    setErrorMsg('');
-  };
-
-  const handleClear = () => {
-    setPasskeyInput('');
-    setErrorMsg('');
-  };
 
   const handleVerify = async (e) => {
     if (e) e.preventDefault();
@@ -66,7 +63,7 @@ export default function PasskeyModal({ email, user, onVerified, onCancel }) {
           Passkey Required
         </h3>
         <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '14px' }}>
-          Enter PIN for <span style={{ color: 'var(--primary-accent)', fontWeight: '600' }}>{email}</span>
+          Enter PIN for <span style={{ color: 'var(--primary-accent)', fontWeight: '600' }}>{maskEmail(email)}</span>
         </p>
 
         {errorMsg && (
@@ -83,48 +80,33 @@ export default function PasskeyModal({ email, user, onVerified, onCancel }) {
           ))}
         </div>
 
-        {/* Form and Keypad */}
+        {/* Form and Direct Keyboard Input */}
         <form onSubmit={handleVerify}>
-          <input
-            type="password"
-            className="input-field"
-            style={{ textAlign: 'center', letterSpacing: '6px', fontSize: '1.2rem', fontFamily: 'var(--font-mono)', marginBottom: '14px' }}
-            placeholder="••••"
-            value={passkeyInput}
-            onChange={(e) => {
-              setPasskeyInput(e.target.value);
-              setErrorMsg('');
-            }}
-            maxLength={8}
-            autoFocus
-          />
-
-          {/* Virtual Keypad */}
-          <div className="keypad-grid">
-            {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((digit) => (
-              <button
-                key={digit}
-                type="button"
-                className="key-btn"
-                onClick={() => handleKeyPress(digit)}
-              >
-                {digit}
-              </button>
-            ))}
-            <button 
-              type="button" 
-              className="key-btn" 
-              style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }} 
-              onClick={handleClear}
-            >
-              CLR
-            </button>
-            <button type="button" className="key-btn" onClick={() => handleKeyPress('0')}>
-              0
-            </button>
-            <button type="button" className="key-btn" onClick={handleDelete} title="Delete">
-              <Delete size={18} />
-            </button>
+          <div style={{ marginBottom: '18px' }}>
+            <input
+              type="password"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              className="input-field"
+              style={{
+                textAlign: 'center',
+                letterSpacing: '8px',
+                fontSize: '1.4rem',
+                fontFamily: 'var(--font-mono)',
+                fontWeight: '700',
+                padding: '14px 16px',
+                borderRadius: '16px'
+              }}
+              placeholder="••••"
+              value={passkeyInput}
+              onChange={(e) => {
+                const val = e.target.value.replace(/\D/g, ''); // keep numbers only
+                setPasskeyInput(val);
+                setErrorMsg('');
+              }}
+              maxLength={8}
+              autoFocus
+            />
           </div>
 
           <div className="action-button-container">

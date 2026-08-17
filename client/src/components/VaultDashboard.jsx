@@ -447,24 +447,12 @@ export default function VaultDashboard({ user, onLogout }) {
             </h3>
 
             {/* Filter Tags */}
-            <div style={{ display: 'flex', gap: '6px' }}>
+            <div className="filter-btn-group">
               {['all', 'docs', 'media'].map((filter) => (
                 <button
                   key={filter}
                   onClick={() => setActiveFilter(filter)}
-                  style={{
-                    padding: '5px 12px',
-                    fontSize: '0.75rem',
-                    fontFamily: 'var(--font-mono)',
-                    fontWeight: activeFilter === filter ? '700' : '500',
-                    border: activeFilter === filter ? '1px solid var(--primary-accent)' : '1px solid rgba(30, 41, 59, 0.9)',
-                    background: activeFilter === filter ? 'rgba(0, 242, 254, 0.2)' : 'rgba(7, 10, 20, 0.8)',
-                    color: activeFilter === filter ? 'var(--primary-accent)' : 'var(--text-muted)',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    textTransform: 'uppercase',
-                    boxShadow: activeFilter === filter ? '0 0 10px rgba(0, 242, 254, 0.25)' : 'none'
-                  }}
+                  className={`filter-badge-btn ${activeFilter === filter ? 'active' : ''}`}
                 >
                   {filter}
                 </button>
@@ -478,7 +466,7 @@ export default function VaultDashboard({ user, onLogout }) {
               <div className="brand-icon-wrapper" style={{ width: '52px', height: '52px', margin: '0 auto 14px' }}>
                 <FolderLock size={24} color="var(--primary-accent)" />
               </div>
-              <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '1.05rem', color: '#ffffff', marginBottom: '6px', fontWeight: '800' }}>
+              <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '1.05rem', color: 'var(--text-primary)', marginBottom: '6px', fontWeight: '800' }}>
                 No Matching Vault Files
               </h4>
               <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', maxWidth: '420px', margin: '0 auto 18px' }}>
@@ -542,14 +530,14 @@ export default function VaultDashboard({ user, onLogout }) {
             </div>
           ) : (
             /* List View Table */
-            <div style={{ overflowX: 'auto' }}>
+            <div className="table-responsive-wrapper">
               <table className="file-list-table">
                 <thead>
                   <tr>
-                    <th>File Name</th>
-                    <th>Size</th>
-                    <th>Date Added</th>
-                    <th style={{ textAlign: 'right' }}>Actions</th>
+                    <th className="th-file-name">File Name</th>
+                    <th className="th-file-size">Size</th>
+                    <th className="th-file-date">Date Added</th>
+                    <th className="th-file-actions">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -558,16 +546,17 @@ export default function VaultDashboard({ user, onLogout }) {
                       key={file.id} 
                       className="file-table-row"
                       onClick={() => handleOpenPreview(file)}
-                      style={{ cursor: 'pointer' }}
                     >
-                      <td style={{ display: 'flex', alignItems: 'center', gap: '10px', fontWeight: '600' }}>
-                        {renderFileIcon(file.type, 18)}
-                        <span title={file.name}>{file.name}</span>
+                      <td className="td-file-name">
+                        <div className="file-name-cell-content">
+                          {renderFileIcon(file.type, 18)}
+                          <span className="file-name-text" title={file.name}>{file.name}</span>
+                        </div>
                       </td>
-                      <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}>{file.size}</td>
-                      <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', color: 'var(--text-muted)' }}>{file.date}</td>
-                      <td style={{ textAlign: 'right' }}>
-                        <div style={{ display: 'inline-flex', gap: '6px' }}>
+                      <td className="td-file-size">{file.size}</td>
+                      <td className="td-file-date">{file.date}</td>
+                      <td className="td-file-actions">
+                        <div className="table-actions-group">
                           <button
                             className="file-action-btn"
                             onClick={(e) => {
@@ -610,7 +599,7 @@ export default function VaultDashboard({ user, onLogout }) {
             <div className="brand-icon-wrapper" style={{ width: '56px', height: '56px', margin: '0 auto 14px' }}>
               <Upload size={26} color="var(--primary-accent)" />
             </div>
-            <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '1.05rem', fontWeight: '800', color: '#ffffff' }}>
+            <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '1.05rem', fontWeight: '800', color: 'var(--text-primary)' }}>
               Encrypting & Uploading Metadata...
             </h4>
             <p style={{ fontSize: '0.82rem', color: 'var(--primary-accent)', fontFamily: 'var(--font-mono)', margin: '4px 0 14px' }}>
@@ -638,20 +627,20 @@ export default function VaultDashboard({ user, onLogout }) {
           <div className="file-preview-card" onClick={(e) => e.stopPropagation()}>
             {/* Modal Header with Title, Telemetry Tools & Action Buttons */}
             <div className="preview-modal-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', overflow: 'hidden' }}>
                 {renderFileIcon(selectedPreviewFile.type, 24)}
-                <div>
-                  <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1rem', fontWeight: '800', color: '#ffffff', margin: 0 }}>
+                <div style={{ overflow: 'hidden' }}>
+                  <h3 className="preview-modal-title" title={selectedPreviewFile.name}>
                     {selectedPreviewFile.name}
                   </h3>
-                  <span style={{ fontSize: '0.74rem', color: 'var(--primary-accent)', fontFamily: 'var(--font-mono)' }}>
+                  <span className="preview-modal-subtitle">
                     {selectedPreviewFile.size} &bull; MongoDB Metadata Vault &bull; AES-256
                   </span>
                 </div>
               </div>
 
               {/* Action Toolbar */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
                 {/* Download Button */}
                 <button
                   className="action-btn-pill"
@@ -708,19 +697,6 @@ export default function VaultDashboard({ user, onLogout }) {
                 >
                   <X size={18} />
                 </button>
-              </div>
-            </div>
-
-            {/* Telemetry Bar */}
-            <div className="metadata-telemetry-row">
-              <div className="telemetry-chip">
-                <span>CHECKSUM SHA-256:</span> {selectedPreviewFile.checksum || 'a8f5f167f44f4964'}
-              </div>
-              <div className="telemetry-chip">
-                <span>STORAGE ENGINE:</span> {selectedPreviewFile.storageType || 'metadata_vault'}
-              </div>
-              <div className="telemetry-chip">
-                <span>STATUS:</span> <span style={{ color: '#10b981' }}>ENCRYPTED & VERIFIED</span>
               </div>
             </div>
 

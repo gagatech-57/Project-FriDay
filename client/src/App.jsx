@@ -94,11 +94,6 @@ export default function App() {
         {stage === 'vault_dashboard' && currentUser && (
           <VaultDashboard user={currentUser} onLogout={handleLogout} />
         )}
-
-        {/* Footer */}
-        <footer className="app-footer">
-          PROJECT FRIDAY SYSTEM &bull; MONGODB VAULT ENGINE &bull; LEVEL 2 VERIFIED
-        </footer>
       </div>
     </>
   );
