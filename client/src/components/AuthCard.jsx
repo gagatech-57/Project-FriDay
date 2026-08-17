@@ -15,7 +15,6 @@ import {
   HelpCircle
 } from 'lucide-react';
 import { loginUser, registerUser } from '../services/api';
-import WhatsAppResetModal from './WhatsAppResetModal';
 
 export default function AuthCard({ onRequirePasskey }) {
   const [activeTab, setActiveTab] = useState('login'); // 'login' | 'register'
@@ -34,7 +33,6 @@ export default function AuthCard({ onRequirePasskey }) {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
-  const [whatsappResetMode, setWhatsappResetMode] = useState(null); // null | 'password' | 'passkey'
 
   // Auto-fill saved email on mount
   useEffect(() => {
@@ -154,17 +152,6 @@ export default function AuthCard({ onRequirePasskey }) {
 
   return (
     <div className="glass-card-wrapper">
-      {/* WhatsApp OTP Recovery Modal */}
-      {whatsappResetMode && (
-        <WhatsAppResetModal
-          initialMode={whatsappResetMode}
-          onClose={() => setWhatsappResetMode(null)}
-          onResetSuccess={() => {
-            setSuccessMsg('Credentials reset via WhatsApp OTP! Please sign in with updated credentials.');
-          }}
-        />
-      )}
-
       <div className="glass-card">
         {/* Interactive Tab Switcher Banner */}
         <div className="card-header-tabs">
@@ -351,41 +338,19 @@ export default function AuthCard({ onRequirePasskey }) {
               </button>
             </div>
 
-            {/* Remember Me & Options */}
+            {/* Remember Me Option */}
             {activeTab === 'login' && (
-              <div className="form-options" style={{ flexDirection: 'column', gap: '8px', alignItems: 'flex-start' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
-                  <div 
-                    className="checkbox-label" 
-                    onClick={() => setRememberMe(!rememberMe)}
-                    role="button"
-                    tabIndex={0}
-                  >
-                    <div className={`custom-checkbox ${rememberMe ? 'checked' : ''}`}>
-                      {rememberMe && <Check size={12} strokeWidth={3} />}
-                    </div>
-                    <span>Remember me</span>
+              <div className="form-options" style={{ justifyContent: 'flex-start', marginTop: '14px' }}>
+                <div 
+                  className="checkbox-label" 
+                  onClick={() => setRememberMe(!rememberMe)}
+                  role="button"
+                  tabIndex={0}
+                >
+                  <div className={`custom-checkbox ${rememberMe ? 'checked' : ''}`}>
+                    {rememberMe && <Check size={12} strokeWidth={3} />}
                   </div>
-
-                  <button 
-                    type="button" 
-                    className="forgot-link" 
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-                    onClick={() => setWhatsappResetMode('password')}
-                  >
-                    Forgot Password? (WhatsApp)
-                  </button>
-                </div>
-
-                <div style={{ width: '100%', textAlign: 'right' }}>
-                  <button 
-                    type="button" 
-                    className="forgot-link" 
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'var(--primary-accent)', fontSize: '0.78rem' }}
-                    onClick={() => setWhatsappResetMode('passkey')}
-                  >
-                    Reset Passkey PIN via WhatsApp OTP
-                  </button>
+                  <span>Remember me</span>
                 </div>
               </div>
             )}
