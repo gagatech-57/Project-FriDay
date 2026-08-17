@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield } from 'lucide-react';
+import { ShieldCheck } from 'lucide-react';
 import AuthCard from './components/AuthCard';
 import PasskeyModal from './components/PasskeyModal';
 import VaultDashboard from './components/VaultDashboard';
@@ -70,7 +70,7 @@ export default function App() {
         {stage !== 'vault_dashboard' && (
           <header className="brand-header">
             <div className="brand-icon-wrapper">
-              <Shield size={30} color="var(--primary-accent)" />
+              <ShieldCheck size={30} color="var(--primary-accent)" />
             </div>
             <h1 className="brand-title">Project Friday</h1>
             <p className="brand-subtitle">CLASSIFIED DATA VAULT &bull; LEVEL 2 PROTOCOL</p>
