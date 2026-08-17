@@ -968,8 +968,8 @@ body {
 /* File Grid View */
 .file-grid-container {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 18px;
   margin-top: 16px;
 }
 
@@ -977,24 +977,109 @@ body {
 .file-card {
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 18px;
-  padding: 14px;
+  border-radius: 20px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
+  height: 220px;
   transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease, border-color 0.25s ease;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
   position: relative;
   overflow: hidden;
 }
 
 .file-card:hover {
-  transform: translateY(-3px) scale(1.01);
-  box-shadow: 0 12px 28px rgba(37, 99, 235, 0.15);
-  border-color: var(--primary-accent);
+  transform: translateY(-4px) scale(1.015);
+  box-shadow: 0 14px 30px rgba(37, 99, 235, 0.16);
+  border-color: #2563eb;
 }
 
 .file-card:active {
   transform: scale(0.97);
+}
+
+.file-preview-box {
+  width: 100%;
+  height: 105px;
+  border-radius: 14px;
+  background: #f8fafc;
+  border: 1px solid #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  margin-bottom: 10px;
+  flex-shrink: 0;
+}
+
+.file-preview-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  cursor: pointer;
+  transition: transform 0.3s ease;
+}
+
+.file-card:hover .file-preview-img {
+  transform: scale(1.05);
+}
+
+.file-card-title {
+  font-family: var(--font-body);
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 2px;
+}
+
+.file-card-meta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.file-action-btn {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  padding: 6px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.file-action-btn:hover {
+  color: var(--text-primary);
+  background: #f1f5f9;
+}
+
+.file-action-btn.btn-download:hover {
+  color: #10b981;
+  background: var(--success-bg);
+}
+
+.file-action-btn.btn-delete:hover {
+  color: var(--error-color);
+  background: var(--error-bg);
 }
 
 .file-table-row {
