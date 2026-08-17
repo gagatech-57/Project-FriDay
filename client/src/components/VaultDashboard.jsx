@@ -70,6 +70,7 @@ export default function VaultDashboard({ user, onLogout }) {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [currentUploadName, setCurrentUploadName] = useState('');
+  const [newlyAddedFileId, setNewlyAddedFileId] = useState(null);
 
   // Preview & Download Modal State
   const [selectedPreviewFile, setSelectedPreviewFile] = useState(null);
@@ -238,9 +239,11 @@ export default function VaultDashboard({ user, onLogout }) {
               };
 
           setFiles((prev) => [savedFile, ...prev]);
+          setNewlyAddedFileId(savedFile.id);
           setIsUploading(false);
           setUploadProgress(0);
           setCurrentUploadName('');
+          setTimeout(() => setNewlyAddedFileId(null), 3500);
         }, 250);
       } else {
         setUploadProgress(currentProgress);
@@ -509,7 +512,7 @@ export default function VaultDashboard({ user, onLogout }) {
               {filteredFiles.map((file) => (
                 <div 
                   key={file.id} 
-                  className="file-card"
+                  className={`file-card ${file.id === newlyAddedFileId ? 'new-file-animated-entry' : ''}`}
                   onClick={() => handleOpenPreview(file)}
                   style={{ cursor: 'pointer' }}
                 >
@@ -575,7 +578,7 @@ export default function VaultDashboard({ user, onLogout }) {
                   {filteredFiles.map((file) => (
                     <tr 
                       key={file.id} 
-                      className="file-table-row"
+                      className={`file-table-row ${file.id === newlyAddedFileId ? 'new-file-animated-entry' : ''}`}
                       onClick={() => handleOpenPreview(file)}
                     >
                       <td className="td-file-name">

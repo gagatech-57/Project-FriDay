@@ -1262,6 +1262,132 @@ body {
   100% { opacity: 1; transform: scale(1) translateY(0); }
 }
 
+/* Futuristic File Upload Progress Banner */
+.sci-fi-upload-banner {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(7, 10, 20, 0.95) 100%);
+  border: 1px solid rgba(0, 242, 254, 0.5);
+  border-radius: 16px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 10px 30px rgba(0, 242, 254, 0.2), inset 0 0 15px rgba(0, 242, 254, 0.1);
+  animation: uploadBannerSlide 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.upload-banner-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.upload-badge-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: rgba(0, 242, 254, 0.15);
+  border: 1px solid #00f2fe;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #00f2fe;
+  animation: uploadIconPulse 1.2s infinite alternate;
+}
+
+.upload-banner-info {
+  flex: 1;
+  overflow: hidden;
+}
+
+.upload-filename-text {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.upload-status-text {
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  color: #38bdf8;
+  margin-top: 2px;
+}
+
+.sci-fi-progress-track {
+  width: 100%;
+  height: 8px;
+  background: rgba(30, 41, 59, 0.8);
+  border-radius: 999px;
+  overflow: hidden;
+  position: relative;
+  border: 1px solid rgba(56, 189, 248, 0.2);
+}
+
+.sci-fi-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #2563eb 0%, #00f2fe 100%);
+  border-radius: 999px;
+  transition: width 0.15s ease-out;
+  position: relative;
+  box-shadow: 0 0 12px #00f2fe;
+}
+
+.progress-glow-laser {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 20px;
+  background: #ffffff;
+  box-shadow: 0 0 15px #ffffff, 0 0 25px #00f2fe;
+  filter: blur(2px);
+  animation: laserPulse 0.6s infinite alternate;
+}
+
+/* Newly Added File Card Entrance & Neon Pulse Animation */
+.new-file-animated-entry {
+  animation: newFileCardEntry 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards !important;
+  border-color: #00f2fe !important;
+  box-shadow: 0 0 25px rgba(0, 242, 254, 0.45) !important;
+}
+
+@keyframes uploadBannerSlide {
+  0% { opacity: 0; transform: translateY(-16px) scale(0.96); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes uploadIconPulse {
+  0% { transform: scale(1); box-shadow: 0 0 5px #00f2fe; }
+  100% { transform: scale(1.1); box-shadow: 0 0 18px #00f2fe; }
+}
+
+@keyframes laserPulse {
+  0% { opacity: 0.6; }
+  100% { opacity: 1; }
+}
+
+@keyframes newFileCardEntry {
+  0% {
+    opacity: 0;
+    transform: scale(0.7) translateY(-25px) rotateX(15deg);
+    box-shadow: 0 0 45px rgba(0, 242, 254, 0.9);
+    border-color: #00f2fe;
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.04) translateY(0) rotateX(0deg);
+    box-shadow: 0 0 30px rgba(0, 242, 254, 0.6);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    box-shadow: 0 0 18px rgba(0, 242, 254, 0.35);
+    border-color: #00f2fe;
+  }
+}
+
 /* Responsiveness */
 @media (max-width: 550px) {
   .app-container {
