@@ -292,7 +292,7 @@ export default function VaultDashboard({
                   <h1 className="hero-greeting">Good afternoon, {user ? user.name : 'Guna'} 👋</h1>
                   <p className="hero-greeting-sub">Manage your files securely from one place.</p>
                 </div>
-                <button className="btn-primary-action" onClick={() => setShowUploadModal(true)}>
+                <button className="btn-primary-action btn-compact-upload" onClick={() => setShowUploadModal(true)}>
                   <Plus size={18} />
                   <span>Upload File</span>
                 </button>
@@ -317,7 +317,7 @@ export default function VaultDashboard({
                   </p>
                 </div>
                 {activeTab !== 'trash' && (
-                  <button className="btn-primary-action" onClick={() => setShowUploadModal(true)}>
+                  <button className="btn-primary-action btn-compact-upload" onClick={() => setShowUploadModal(true)}>
                     <Plus size={18} />
                     <span>Upload File</span>
                   </button>
