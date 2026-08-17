@@ -58,16 +58,35 @@ export async function verifyPasskey(email, passkey) {
 
 
 
-// File API Endpoints (MongoDB Backend)
+// File API Endpoints (MongoDB GridFS Backend)
 export async function uploadFileApi(filePayload) {
   try {
-    const response = await fetch('/api/files/upload', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(filePayload)
-    });
+    let response;
+    if (filePayload instanceof FormData) {
+      response = await fetch('/api/files/upload', {
+        method: 'POST',
+        body: filePayload
+      });
+    } else if (filePayload && filePayload.rawFile instanceof File) {
+      const formData = new FormData();
+      formData.append('file', filePayload.rawFile);
+      if (filePayload.userEmail) formData.append('userEmail', filePayload.userEmail);
+      if (filePayload.type) formData.append('type', filePayload.type);
+      if (filePayload.size) formData.append('size', filePayload.size);
+
+      response = await fetch('/api/files/upload', {
+        method: 'POST',
+        body: formData
+      });
+    } else {
+      response = await fetch('/api/files/upload', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(filePayload)
+      });
+    }
     return await response.json();
   } catch (error) {
     return {

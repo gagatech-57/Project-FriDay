@@ -33,10 +33,12 @@ import {
 } from 'lucide-react';
 import { uploadFileApi, fetchFilesApi, deleteFileApi, fetchFileContentApi } from '../services/api';
 
-// Helper to convert base64 DataURL into a native Blob URL for browser PDF rendering
+// Helper to convert base64 DataURL or GridFS streaming endpoint into a native Blob / Stream URL
 const createBlobUrl = (dataUrl, fallbackMime = 'application/pdf') => {
   if (!dataUrl) return null;
-  if (dataUrl.startsWith('blob:')) return dataUrl;
+  if (dataUrl.startsWith('blob:') || dataUrl.startsWith('/api/files/') || dataUrl.startsWith('http://') || dataUrl.startsWith('https://')) {
+    return dataUrl;
+  }
   if (dataUrl.startsWith('data:')) {
     try {
       const parts = dataUrl.split(',');
@@ -174,12 +176,21 @@ export default function VaultDashboard({ user, onLogout }) {
     }
   };
 
-  // Handle File Selection, Metadata Extraction & Base64 Conversion
+  // Handle File Selection, Metadata Extraction & Stream Upload to MongoDB GridFS
   const handleFileChange = (e) => {
     const selectedFiles = Array.from(e.target.files);
     if (!selectedFiles || selectedFiles.length === 0) return;
 
     const file = selectedFiles[0];
+
+    // File Size Validation (Max 500 MB)
+    const maxSizeBytes = 500 * 1024 * 1024;
+    if (file.size > maxSizeBytes) {
+      alert('File size exceeds the 500MB limit for Project Friday GridFS storage.');
+      e.target.value = '';
+      return;
+    }
+
     setCurrentUploadName(file.name);
     setIsUploading(true);
     setUploadProgress(0);
@@ -188,55 +199,54 @@ export default function VaultDashboard({ user, onLogout }) {
       ? 'image'
       : file.name.endsWith('.pdf') || file.type === 'application/pdf'
       ? 'pdf'
+      : file.type.startsWith('video/') || file.type.startsWith('audio/')
+      ? 'media'
       : file.type.includes('json') || file.name.endsWith('.enc') || file.type.includes('javascript')
       ? 'code'
       : 'doc';
 
-    const reader = new FileReader();
+    // 0% -> 100% Upload Progress Animation
+    let currentProgress = 0;
+    const interval = setInterval(() => {
+      currentProgress += Math.floor(Math.random() * 22) + 16;
+      if (currentProgress >= 100) {
+        currentProgress = 100;
+        setUploadProgress(100);
+        clearInterval(interval);
 
-    reader.onload = (event) => {
-      const dataUrl = event.target.result;
+        setTimeout(async () => {
+          const formData = new FormData();
+          formData.append('file', file);
+          formData.append('userEmail', user.email);
+          formData.append('type', fileType);
+          formData.append('size', (file.size / (1024 * 1024)).toFixed(2) + ' MB');
 
-      // 0% -> 100% Progress Animation
-      let currentProgress = 0;
-      const interval = setInterval(() => {
-        currentProgress += Math.floor(Math.random() * 22) + 14;
-        if (currentProgress >= 100) {
-          currentProgress = 100;
-          setUploadProgress(100);
-          clearInterval(interval);
+          // Stream File directly to MongoDB GridFS Vault
+          const apiRes = await uploadFileApi(formData);
+          const savedFile = (apiRes && apiRes.success && apiRes.file)
+            ? apiRes.file
+            : {
+                id: 'file_' + Date.now(),
+                name: file.name,
+                size: (file.size / (1024 * 1024)).toFixed(2) + ' MB',
+                fileSizeBytes: file.size,
+                type: fileType,
+                date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                url: `/api/files/file_${Date.now()}/stream`,
+                downloadUrl: `/api/files/file_${Date.now()}/download`,
+                userEmail: user.email
+              };
 
-          setTimeout(async () => {
-            const filePayload = {
-              name: file.name,
-              size: (file.size / (1024 * 1024)).toFixed(2) + ' MB',
-              fileSizeBytes: file.size,
-              type: fileType,
-              date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-              url: dataUrl,
-              content: null,
-              userEmail: user.email
-            };
+          setFiles((prev) => [savedFile, ...prev]);
+          setIsUploading(false);
+          setUploadProgress(0);
+          setCurrentUploadName('');
+        }, 250);
+      } else {
+        setUploadProgress(currentProgress);
+      }
+    }, 60);
 
-            // Save File Metadata & Payload to MongoDB Database
-            const apiRes = await uploadFileApi(filePayload);
-            const savedFile = (apiRes && apiRes.success && apiRes.file)
-              ? apiRes.file
-              : { id: 'file_' + Date.now(), ...filePayload };
-
-            setFiles((prev) => [savedFile, ...prev]);
-            setIsUploading(false);
-            setUploadProgress(0);
-            setCurrentUploadName('');
-          }, 250);
-        } else {
-          setUploadProgress(currentProgress);
-        }
-      }, 70);
-    };
-
-    // Read file as Base64 Data URL
-    reader.readAsDataURL(file);
     e.target.value = '';
   };
 
@@ -245,13 +255,17 @@ export default function VaultDashboard({ user, onLogout }) {
     setZoomLevel(1);
     setCopySuccess(false);
 
-    // If url or content payload is already attached, open immediately
-    if (file.url || file.content) {
-      setSelectedPreviewFile(file);
+    // If streaming url or content payload is present, open immediately
+    if (file.url || file.streamUrl || file.content) {
+      const previewObj = {
+        ...file,
+        url: file.streamUrl || file.url || `/api/files/${file.id}/stream`
+      };
+      setSelectedPreviewFile(previewObj);
       return;
     }
 
-    // Otherwise, lazily fetch heavy payload from backend endpoint
+    // Otherwise, lazily fetch payload
     setIsPreviewLoading(true);
     setSelectedPreviewFile(file);
 
@@ -261,28 +275,31 @@ export default function VaultDashboard({ user, onLogout }) {
     if (res && res.success) {
       setSelectedPreviewFile((prev) => ({
         ...prev,
-        url: res.url,
+        url: res.url || `/api/files/${file.id}/stream`,
         content: res.content,
         checksum: res.checksum || prev.checksum
       }));
     }
   };
 
-  // High-Speed Direct File Download Handler
+  // Direct High-Speed GridFS File Download Handler
   const handleDownloadFile = async (e, file) => {
     if (e) e.stopPropagation();
 
-    let payloadUrl = file.url;
-    let payloadContent = file.content;
+    const downloadEndpoint = file.downloadUrl || `/api/files/${file.id}/download`;
 
-    // Lazily fetch payload if not present on current metadata object
-    if (!payloadUrl && !payloadContent && file.id) {
-      const res = await fetchFileContentApi(file.id);
-      if (res && res.success) {
-        payloadUrl = res.url;
-        payloadContent = res.content;
-      }
+    if (file.id && !file.id.startsWith('f1') && !file.id.startsWith('f2')) {
+      const a = document.createElement('a');
+      a.href = downloadEndpoint;
+      a.download = file.name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      return;
     }
+
+    let payloadUrl = file.url || downloadEndpoint;
+    let payloadContent = file.content;
 
     if (payloadUrl) {
       const a = document.createElement('a');
@@ -297,18 +314,6 @@ export default function VaultDashboard({ user, onLogout }) {
       const a = document.createElement('a');
       a.href = blobUrl;
       a.download = file.name;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
-    } else {
-      // Fallback text generator for metadata file download
-      const metadataDoc = `[PROJECT FRIDAY ENCRYPTED VAULT RECORD]\n=====================================\nFile Name: ${file.name}\nFile Size: ${file.size}\nChecksum SHA-256: ${file.checksum || 'a8f5f167f44f4964'}\nTimestamp: ${file.date}\nUser Account: ${file.userEmail || user.email}\nStorage Engine: MongoDB Metadata Vault (Indexed)\nSecurity Status: AES-256 Verified`;
-      const blob = new Blob([metadataDoc], { type: 'text/plain;charset=utf-8' });
-      const blobUrl = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = blobUrl;
-      a.download = file.name + '.txt';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

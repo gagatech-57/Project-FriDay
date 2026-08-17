@@ -26,16 +26,25 @@ const fileSchema = new mongoose.Schema({
     type: String,
     default: null
   },
+  mimeType: {
+    type: String,
+    default: 'application/octet-stream'
+  },
+  gridFsId: {
+    type: mongoose.Schema.Types.ObjectId,
+    index: true,
+    default: null
+  },
   storageType: {
     type: String,
-    enum: ['inline', 'gridfs', 'metadata_vault'],
-    default: 'metadata_vault'
+    enum: ['gridfs', 'inline', 'metadata_vault'],
+    default: 'gridfs'
   },
   url: {
-    type: String // Base64 Data URL or Blob URL (loaded lazily on preview/download)
+    type: String // Optional fallback or streaming route URL
   },
   content: {
-    type: String // Text payload (loaded lazily)
+    type: String // Optional text preview fallback
   },
   userEmail: {
     type: String,
