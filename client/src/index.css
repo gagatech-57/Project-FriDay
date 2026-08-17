@@ -973,6 +973,7 @@ body {
   margin-top: 16px;
 }
 
+/* File Card Tactile Click & Hover Micro-Interactions */
 .file-card {
   background: #ffffff;
   border: 1px solid #e2e8f0;
@@ -980,117 +981,80 @@ body {
   padding: 14px;
   display: flex;
   flex-direction: column;
-  transition: all 0.2s ease;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease, border-color 0.25s ease;
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
   position: relative;
   overflow: hidden;
 }
 
 .file-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+  transform: translateY(-3px) scale(1.01);
+  box-shadow: 0 12px 28px rgba(37, 99, 235, 0.15);
   border-color: var(--primary-accent);
 }
 
-.file-preview-box {
-  width: 100%;
-  height: 115px;
-  border-radius: 12px;
-  background: #f8fafc;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  margin-bottom: 12px;
+.file-card:active {
+  transform: scale(0.97);
 }
 
-.file-preview-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+.file-table-row {
+  transition: transform 0.15s ease, background-color 0.2s ease;
   cursor: pointer;
 }
 
-.file-card-title {
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.file-table-row:hover {
+  background: rgba(37, 99, 235, 0.05);
 }
 
-.file-card-meta {
-  font-size: 0.74rem;
-  color: var(--text-muted);
-  font-family: var(--font-mono);
-  margin-top: 3px;
+.file-table-row:active {
+  transform: scale(0.99);
 }
 
-.file-card-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 6px;
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid #f1f5f9;
-}
-
-.file-action-btn {
-  background: transparent;
-  border: none;
-  color: var(--text-muted);
-  padding: 5px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.file-action-btn:hover {
-  color: var(--text-primary);
-  background: #f1f5f9;
-}
-
-.file-action-btn.btn-download:hover {
-  color: #10b981;
-  background: var(--success-bg);
-}
-
-.file-action-btn.btn-delete:hover {
-  color: var(--error-color);
-  background: var(--error-bg);
-}
-
-/* File Preview Modal Overlay & Futuristic Dark Card */
+/* File Preview Modal Overlay & Cyber Spring Animations */
 .file-preview-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(11, 15, 25, 0.75);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: rgba(11, 15, 25, 0.78);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
   z-index: 300;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 24px;
-  animation: fadeIn 0.2s ease;
+  animation: backdropFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .file-preview-card {
   width: 100%;
-  max-width: 880px;
+  max-width: 900px;
   max-height: 88vh;
   background: #0f172a;
-  border: 1px solid rgba(37, 99, 235, 0.35);
+  border: 1px solid rgba(37, 99, 235, 0.4);
   border-radius: 24px;
   box-shadow: 
-    0 30px 60px -12px rgba(0, 0, 0, 0.7),
-    0 0 30px rgba(37, 99, 235, 0.15);
+    0 30px 70px -12px rgba(0, 0, 0, 0.85),
+    0 0 35px rgba(37, 99, 235, 0.2);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   position: relative;
-  animation: modalScaleUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  perspective: 1000px;
+  animation: vaultCyberOpen 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* Cyber Scanning Line Beam Effect on Open */
+.file-preview-card::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent 0%, #38bdf8 50%, transparent 100%);
+  box-shadow: 0 0 15px #38bdf8, 0 0 30px #2563eb;
+  pointer-events: none;
+  z-index: 50;
+  animation: cyberScanline 0.8s ease-out forwards;
 }
 
 .preview-modal-header {
@@ -1132,14 +1096,15 @@ body {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .preview-close-btn:hover {
   background: #ef4444;
   color: #ffffff;
   border-color: #ef4444;
-  transform: rotate(90deg);
+  transform: rotate(90deg) scale(1.1);
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.5);
 }
 
 .preview-body-container {
@@ -1151,6 +1116,36 @@ body {
   align-items: center;
   width: 100%;
   background: #0f172a;
+  animation: bodyContentReveal 0.4s ease-out;
+}
+
+/* Animations */
+@keyframes backdropFadeIn {
+  from { opacity: 0; backdrop-filter: blur(0px); }
+  to { opacity: 1; backdrop-filter: blur(18px); }
+}
+
+@keyframes vaultCyberOpen {
+  0% {
+    opacity: 0;
+    transform: scale(0.72) translateY(35px) rotateX(8deg);
+    filter: blur(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0) rotateX(0deg);
+    filter: blur(0);
+  }
+}
+
+@keyframes cyberScanline {
+  0% { top: 0%; opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+@keyframes bodyContentReveal {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* Animations */
