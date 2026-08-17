@@ -28,9 +28,35 @@ import {
   Copy,
   Check,
   Cpu,
-  Layers
+  Layers,
+  ExternalLink
 } from 'lucide-react';
 import { uploadFileApi, fetchFilesApi, deleteFileApi, fetchFileContentApi } from '../services/api';
+
+// Helper to convert base64 DataURL into a native Blob URL for browser PDF rendering
+const createBlobUrl = (dataUrl, fallbackMime = 'application/pdf') => {
+  if (!dataUrl) return null;
+  if (dataUrl.startsWith('blob:')) return dataUrl;
+  if (dataUrl.startsWith('data:')) {
+    try {
+      const parts = dataUrl.split(',');
+      const mimeMatch = parts[0].match(/:(.*?);/);
+      const mimeType = mimeMatch ? mimeMatch[1] : fallbackMime;
+      const bstr = atob(parts[1]);
+      let n = bstr.length;
+      const u8arr = new Uint8Array(n);
+      while (n--) {
+        u8arr[n] = bstr.charCodeAt(n);
+      }
+      const blob = new Blob([u8arr], { type: mimeType });
+      return URL.createObjectURL(blob);
+    } catch (e) {
+      console.warn('Could not create blob URL:', e);
+      return dataUrl;
+    }
+  }
+  return dataUrl;
+};
 
 export default function VaultDashboard({ user, onLogout }) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -641,6 +667,24 @@ export default function VaultDashboard({ user, onLogout }) {
 
               {/* Action Toolbar */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+                {/* External Full Screen Browser View Button for PDF & Documents */}
+                {selectedPreviewFile.url && (
+                  <button
+                    className="action-btn-pill"
+                    style={{ padding: '7px 14px', fontSize: '0.76rem', background: 'rgba(37, 99, 235, 0.15)', border: '1px solid #2563eb', color: '#38bdf8' }}
+                    onClick={() => {
+                      const blobUrl = createBlobUrl(selectedPreviewFile.url, selectedPreviewFile.type === 'pdf' ? 'application/pdf' : 'image/png');
+                      if (blobUrl) {
+                        window.open(blobUrl, '_blank');
+                      }
+                    }}
+                    title="Open Document in Full Browser Tab"
+                  >
+                    <ExternalLink size={15} />
+                    <span>Full Screen</span>
+                  </button>
+                )}
+
                 {/* Download Button */}
                 <button
                   className="action-btn-pill"
@@ -737,15 +781,34 @@ export default function VaultDashboard({ user, onLogout }) {
 
                   {/* NATIVE VISUAL PDF PREVIEW */}
                   {selectedPreviewFile.type === 'pdf' && (
-                    <div style={{ width: '100%', height: '580px', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}>
+                    <div style={{ width: '100%', height: '620px', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 10px 30px rgba(0,0,0,0.5)', background: '#ffffff' }}>
                       {selectedPreviewFile.url ? (
-                        <iframe
-                          src={selectedPreviewFile.url}
-                          title={selectedPreviewFile.name}
+                        <object
+                          data={createBlobUrl(selectedPreviewFile.url, 'application/pdf')}
+                          type="application/pdf"
                           width="100%"
                           height="100%"
-                          style={{ border: 'none', background: '#070a14', transform: `scale(${zoomLevel})`, transformOrigin: 'top center' }}
-                        />
+                          style={{ border: 'none', background: '#ffffff', display: 'block' }}
+                        >
+                          <iframe
+                            src={createBlobUrl(selectedPreviewFile.url, 'application/pdf')}
+                            title={selectedPreviewFile.name}
+                            width="100%"
+                            height="100%"
+                            style={{ border: 'none', background: '#ffffff', transform: `scale(${zoomLevel})`, transformOrigin: 'top center' }}
+                          >
+                            <div style={{ padding: '30px', textAlign: 'center', color: '#0f172a' }}>
+                              <p style={{ fontWeight: '700', marginBottom: '12px' }}>PDF Inline Preview ready.</p>
+                              <button
+                                className="action-btn-pill"
+                                style={{ margin: '0 auto' }}
+                                onClick={() => window.open(createBlobUrl(selectedPreviewFile.url, 'application/pdf'), '_blank')}
+                              >
+                                Open PDF in Browser Tab
+                              </button>
+                            </div>
+                          </iframe>
+                        </object>
                       ) : (
                         <div className="pdf-preview-doc">
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(30, 41, 59, 0.9)', paddingBottom: '12px', marginBottom: '16px' }}>
