@@ -64,6 +64,7 @@ export default function VaultDashboard({
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState('all'); // 'all' | 'image' | 'pdf' | 'doc'
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   // Modals & Panels
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -237,8 +238,8 @@ export default function VaultDashboard({
       <Sidebar
         activeTab={activeTab}
         onSelectTab={(tab) => { setActiveTab(tab); if (onSelectNavTab) onSelectNavTab(tab); }}
-        onOpenUpload={() => setShowUploadModal(true)}
         storageUsedMB={calculateStorageMB()}
+        isOpen={isSidebarOpen}
       />
 
       <div className="app-main-content">
@@ -250,6 +251,8 @@ export default function VaultDashboard({
           onSelectTab={(tab) => { setActiveTab(tab); if (onSelectNavTab) onSelectNavTab(tab); }}
           onLogout={onLogout}
           searchCount={filteredFiles.length}
+          isSidebarOpen={isSidebarOpen}
+          onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         />
 
         {/* Dynamic Route Content */}

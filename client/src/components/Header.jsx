@@ -9,10 +9,11 @@ import {
   LogOut, 
   HelpCircle, 
   CheckCircle,
-  Bell
+  Bell,
+  Menu
 } from 'lucide-react';
 
-export default function Header({ user, searchTerm, onSearchChange, onSelectTab, onLogout, searchCount = 0 }) {
+export default function Header({ user, searchTerm, onSearchChange, onSelectTab, onLogout, searchCount = 0, onToggleSidebar, isSidebarOpen }) {
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -38,6 +39,16 @@ export default function Header({ user, searchTerm, onSearchChange, onSelectTab, 
 
   return (
     <header className="app-top-header">
+      {/* 3-Line Hamburger Menu Sidebar Toggle Button */}
+      <button
+        className="sidebar-toggle-btn"
+        onClick={onToggleSidebar}
+        title={isSidebarOpen ? "Hide Sidebar" : "Show Sidebar"}
+        aria-label="Toggle Sidebar"
+      >
+        <Menu size={20} color="var(--text-primary)" />
+      </button>
+
       {/* Mobile Brand Title */}
       <div className="mobile-brand-left">
         <ShieldCheck size={24} color="var(--primary-accent)" />

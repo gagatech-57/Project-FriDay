@@ -13,25 +13,19 @@ import {
   HelpCircle
 } from 'lucide-react';
 
-export default function Sidebar({ activeTab, onSelectTab, onOpenUpload, storageUsedMB = 12.4, storageTotalMB = 5120 }) {
+export default function Sidebar({ activeTab, onSelectTab, storageUsedMB = 12.4, storageTotalMB = 5120, isOpen = true }) {
   const percentUsed = Math.min(100, Math.max(2, (storageUsedMB / storageTotalMB) * 100));
 
   return (
     <>
       {/* Desktop Sidebar */}
-      <aside className="app-sidebar-desktop">
+      <aside className={`app-sidebar-desktop ${isOpen ? '' : 'collapsed'}`}>
         <div className="sidebar-brand-row">
           <div className="brand-logo-icon" style={{ width: '36px', height: '36px' }}>
             <ShieldCheck size={22} color="#ffffff" />
           </div>
           <span className="sidebar-brand-name">Project Friday</span>
         </div>
-
-        {/* Primary + Upload File Action Pill */}
-        <button className="sidebar-upload-btn" onClick={onOpenUpload}>
-          <Plus size={18} />
-          <span>Upload File</span>
-        </button>
 
         {/* Main Navigation Group */}
         <div className="sidebar-nav-group">

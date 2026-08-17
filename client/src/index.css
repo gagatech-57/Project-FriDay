@@ -1857,10 +1857,19 @@ body {
   flex-direction: column;
   gap: 20px;
   flex-shrink: 0;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 
   @media (max-width: 850px) {
     display: none;
   }
+}
+
+.app-sidebar-desktop.collapsed {
+  width: 0 !important;
+  padding: 24px 0 !important;
+  overflow: hidden !important;
+  border-right: none !important;
+  opacity: 0 !important;
 }
 
 .sidebar-brand-row {
@@ -2062,6 +2071,26 @@ body {
 
   @media (max-width: 850px) {
     padding: 0 16px;
+  }
+}
+
+.sidebar-toggle-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  flex-shrink: 0;
+
+  &:hover {
+    background: rgba(37, 99, 235, 0.08);
+    border-color: #2563eb;
+    color: #2563eb;
   }
 }
 
