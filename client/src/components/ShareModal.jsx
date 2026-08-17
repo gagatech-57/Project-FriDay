@@ -84,8 +84,8 @@ export default function ShareModal({ file, onClose, onShowToast }) {
                 <option value="view">Can View</option>
                 <option value="download">Can Download</option>
               </select>
-              <button type="submit" className="btn-primary-action" style={{ padding: '0 18px' }}>
-                <Send size={15} />
+              <button type="submit" className="btn-invite-send" title="Send Invitation">
+                <Send size={16} />
               </button>
             </div>
           </form>
