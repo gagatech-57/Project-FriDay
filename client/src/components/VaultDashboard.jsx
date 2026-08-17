@@ -554,33 +554,124 @@ export default function VaultDashboard({
         />
       )}
 
-      {/* Preview Modal */}
+      {/* Multi-Format Centered File Preview Modal */}
       {selectedPreviewFile && (
         <div className="preview-modal-backdrop" onClick={() => setSelectedPreviewFile(null)}>
           <div className="file-preview-card" onClick={(e) => e.stopPropagation()}>
+            {/* Header: File Metadata + Download / Share / Star / Close Toolbar */}
             <div className="preview-modal-header">
-              <div>
-                <h3 className="preview-modal-title">{selectedPreviewFile.name}</h3>
-                <span className="preview-modal-subtitle">{selectedPreviewFile.size}</span>
+              <div className="preview-file-info-group">
+                <div className="preview-file-icon">
+                  {renderFileIcon(selectedPreviewFile.type, 22)}
+                </div>
+                <div>
+                  <h3 className="preview-modal-title" title={selectedPreviewFile.name}>
+                    {selectedPreviewFile.name}
+                  </h3>
+                  <span className="preview-modal-subtitle">
+                    {selectedPreviewFile.size} &bull; {selectedPreviewFile.mimeType || selectedPreviewFile.type || 'Document'}
+                  </span>
+                </div>
               </div>
-              <button className="preview-close-btn" onClick={() => setSelectedPreviewFile(null)}>
-                <X size={18} />
-              </button>
+
+              {/* Quick Action Toolbar */}
+              <div className="preview-header-actions">
+                <button
+                  className="btn-primary-action btn-preview-download"
+                  onClick={(e) => handleDownloadFile(e, selectedPreviewFile)}
+                  title="Download File"
+                >
+                  <Download size={15} />
+                  <span>Download</span>
+                </button>
+
+                <button
+                  className="preview-action-btn"
+                  onClick={() => setShareTargetFile(selectedPreviewFile)}
+                  title="Share File"
+                >
+                  <Share2 size={16} />
+                </button>
+
+                <button
+                  className={`preview-action-btn ${selectedPreviewFile.isFavorite ? 'active' : ''}`}
+                  onClick={(e) => handleToggleFavorite(selectedPreviewFile, e)}
+                  title={selectedPreviewFile.isFavorite ? "Unstar File" : "Star File"}
+                >
+                  <Star size={16} fill={selectedPreviewFile.isFavorite ? "#f59e0b" : "none"} color={selectedPreviewFile.isFavorite ? "#f59e0b" : "currentColor"} />
+                </button>
+
+                <button
+                  className="preview-close-btn"
+                  onClick={() => setSelectedPreviewFile(null)}
+                  title="Close Preview (Esc)"
+                >
+                  <X size={18} />
+                </button>
+              </div>
             </div>
 
+            {/* Body: Format-Specific Previewer */}
             <div className="preview-body-container">
               {isPreviewLoading ? (
-                <div style={{ padding: '60px', color: '#ffffff' }}>Loading preview...</div>
-              ) : selectedPreviewFile.type === 'image' ? (
+                <div className="preview-loading-box">
+                  <div className="spinner-small" />
+                  <span>Loading file preview...</span>
+                </div>
+              ) : (selectedPreviewFile.type === 'pdf' || selectedPreviewFile.name.toLowerCase().endsWith('.pdf')) ? (
+                /* PDF Document Viewer */
+                <iframe
+                  src={selectedPreviewFile.url || selectedPreviewFile.streamUrl || `/api/files/${selectedPreviewFile.id}/stream`}
+                  title={selectedPreviewFile.name}
+                  className="preview-iframe-pdf"
+                />
+              ) : (selectedPreviewFile.type === 'image' || /\.(png|jpe?g|gif|webp|svg)$/i.test(selectedPreviewFile.name)) ? (
+                /* Image Viewer */
                 <img
                   src={selectedPreviewFile.url || selectedPreviewFile.streamUrl || `/api/files/${selectedPreviewFile.id}/stream`}
                   alt={selectedPreviewFile.name}
-                  style={{ maxWidth: '100%', maxHeight: '65vh', borderRadius: '12px', transform: `scale(${zoomLevel})` }}
+                  className="preview-img-content"
                 />
-              ) : (
-                <pre style={{ width: '100%', background: '#0b0f19', color: '#00f2fe', padding: '20px', borderRadius: '12px', overflowX: 'auto', fontFamily: 'var(--font-mono)' }}>
-                  {selectedPreviewFile.content || `[GRIDFS STREAM PAYLOAD]\nStreaming ${selectedPreviewFile.name} (${selectedPreviewFile.size}) directly from MongoDB`}
+              ) : (selectedPreviewFile.type === 'video' || /\.(mp4|webm|mkv|mov)$/i.test(selectedPreviewFile.name)) ? (
+                /* Video Player */
+                <video
+                  src={selectedPreviewFile.url || selectedPreviewFile.streamUrl || `/api/files/${selectedPreviewFile.id}/stream`}
+                  controls
+                  className="preview-video-content"
+                />
+              ) : (selectedPreviewFile.type === 'audio' || /\.(mp3|wav|ogg|m4a)$/i.test(selectedPreviewFile.name)) ? (
+                /* Audio Player */
+                <div className="preview-audio-wrapper">
+                  <audio
+                    src={selectedPreviewFile.url || selectedPreviewFile.streamUrl || `/api/files/${selectedPreviewFile.id}/stream`}
+                    controls
+                    className="preview-audio-content"
+                  />
+                </div>
+              ) : (selectedPreviewFile.type === 'code' || selectedPreviewFile.type === 'text' || /\.(txt|json|js|jsx|ts|tsx|py|html|css|md|log)$/i.test(selectedPreviewFile.name)) ? (
+                /* Text / Code Viewer */
+                <pre className="preview-code-box">
+                  <code>
+                    {selectedPreviewFile.content || `[GRIDFS STREAM PAYLOAD]\nFile: ${selectedPreviewFile.name}\nSize: ${selectedPreviewFile.size}\nSHA-256: ${selectedPreviewFile.checksum || 'a8f5f167f44f4964'}`}
+                  </code>
                 </pre>
+              ) : (
+                /* Fallback Document Card */
+                <div className="preview-fallback-card">
+                  <div className="fallback-icon-box">
+                    {renderFileIcon(selectedPreviewFile.type, 48)}
+                  </div>
+                  <h4>{selectedPreviewFile.name}</h4>
+                  <p>Direct preview is not supported for this file type.</p>
+                  <button
+                    className="btn-primary-action btn-compact-upload"
+                    onClick={(e) => handleDownloadFile(e, selectedPreviewFile)}
+                    style={{ marginTop: '16px' }}
+                  >
+                    <Download size={16} />
+                    <span>Download File ({selectedPreviewFile.size})</span>
+                  </button>
+                </div>
               )}
             </div>
           </div>

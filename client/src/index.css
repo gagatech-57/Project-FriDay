@@ -3414,7 +3414,7 @@ body {
 .preview-modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.65);
+  background: rgba(15, 23, 42, 0.7);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   z-index: 500;
@@ -3427,12 +3427,12 @@ body {
 
 .file-preview-card {
   width: 100%;
-  max-width: 580px;
-  max-height: 85vh;
+  max-width: 860px;
+  max-height: 88vh;
   background: #ffffff;
   border-radius: 24px;
   padding: 24px;
-  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.35);
   display: flex;
   flex-direction: column;
   animation: modalPop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
@@ -3441,7 +3441,7 @@ body {
 }
 
 @keyframes modalPop {
-  0% { opacity: 0; transform: scale(0.9) translateY(10px); }
+  0% { opacity: 0; transform: scale(0.92) translateY(10px); }
   100% { opacity: 1; transform: scale(1) translateY(0); }
 }
 
@@ -3452,6 +3452,25 @@ body {
   padding-bottom: 14px;
   border-bottom: 1px solid #e2e8f0;
   margin-bottom: 16px;
+  gap: 16px;
+}
+
+.preview-file-info-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  overflow: hidden;
+}
+
+.preview-file-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .preview-modal-title {
@@ -3459,7 +3478,9 @@ body {
   font-size: 1.1rem;
   font-weight: 800;
   color: #0f172a;
-  word-break: break-all;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .preview-modal-subtitle {
@@ -3470,12 +3491,46 @@ body {
   margin-top: 2px;
 }
 
+.preview-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.btn-preview-download {
+  width: auto !important;
+  padding: 8px 16px !important;
+  font-size: 0.82rem !important;
+  border-radius: 10px !important;
+}
+
+.preview-action-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.18s ease;
+
+  &:hover, &.active {
+    background: rgba(37, 99, 235, 0.08);
+    border-color: #2563eb;
+    color: #2563eb;
+  }
+}
+
 .preview-close-btn {
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   border-radius: 10px;
   background: #f1f5f9;
-  border: none;
+  border: 1px solid #e2e8f0;
   color: #64748b;
   display: flex;
   align-items: center;
@@ -3485,17 +3540,105 @@ body {
 
   &:hover {
     background: #fef2f2;
+    border-color: #fee2e2;
     color: #ef4444;
   }
 }
 
 .preview-body-container {
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow-y: auto;
+  min-height: 320px;
+  max-height: 70vh;
+  padding: 8px 0;
+}
+
+.preview-iframe-pdf {
+  width: 100%;
+  height: 520px;
+  border: none;
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.preview-img-content {
+  max-width: 100%;
+  max-height: 68vh;
+  border-radius: 14px;
+  object-fit: contain;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+}
+
+.preview-video-content {
+  width: 100%;
+  max-height: 65vh;
+  border-radius: 14px;
+}
+
+.preview-audio-wrapper {
+  width: 100%;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.preview-audio-content {
+  width: 100%;
+  max-width: 480px;
+}
+
+.preview-code-box {
+  width: 100%;
+  background: #0b0f19;
+  color: #00f2fe;
+  padding: 20px;
+  border-radius: 14px;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 0.84rem;
+  line-height: 1.6;
   max-height: 60vh;
-  padding: 12px 0;
+}
+
+.preview-fallback-card {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.fallback-icon-box {
+  width: 72px;
+  height: 72px;
+  border-radius: 20px;
+  background: #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+}
+
+.fallback-card h4 {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.1rem;
+  color: #0f172a;
+}
+
+.fallback-card p {
+  font-size: 0.84rem;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+.preview-loading-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  color: #64748b;
+  padding: 60px;
 }
 
 /* Compact Upload Button */
@@ -3506,5 +3649,6 @@ body {
   border-radius: 12px !important;
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2) !important;
 }
+
 
 
