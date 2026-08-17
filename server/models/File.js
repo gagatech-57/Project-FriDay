@@ -46,21 +46,59 @@ const fileSchema = new mongoose.Schema({
   content: {
     type: String // Optional text preview fallback
   },
+  ownerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    index: true,
+    default: null
+  },
   userEmail: {
     type: String,
     lowercase: true,
     trim: true,
     index: true
   },
+  isFavorite: {
+    type: Boolean,
+    default: false,
+    index: true
+  },
+  isDeleted: {
+    type: Boolean,
+    default: false,
+    index: true
+  },
+  deletedAt: {
+    type: Date,
+    default: null
+  },
+  sharedWith: [
+    {
+      email: { type: String, lowercase: true, trim: true },
+      access: { type: String, enum: ['view', 'download'], default: 'view' },
+      sharedAt: { type: Date, default: Date.now }
+    }
+  ],
+  shareToken: {
+    type: String,
+    default: null,
+    index: true
+  },
   createdAt: {
     type: Date,
     default: Date.now,
     index: true
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
   }
 });
 
-// Compound index for fast queries by user and date
-fileSchema.index({ userEmail: 1, createdAt: -1 });
+// Compound indexes for fast queries
+fileSchema.index({ userEmail: 1, isDeleted: 1, createdAt: -1 });
+fileSchema.index({ userEmail: 1, isFavorite: 1, isDeleted: 1 });
+fileSchema.index({ ownerId: 1, createdAt: -1 });
 
 module.exports = mongoose.model('File', fileSchema);
 

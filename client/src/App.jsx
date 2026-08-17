@@ -1,30 +1,66 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck } from 'lucide-react';
-import AuthCard from './components/AuthCard';
+import LoginView from './components/LoginView';
+import RegisterView from './components/RegisterView';
+import EmailVerifyView from './components/EmailVerifyView';
+import ForgotPasswordView from './components/ForgotPasswordView';
 import PasskeyModal from './components/PasskeyModal';
+import OnboardingModal from './components/OnboardingModal';
 import VaultDashboard from './components/VaultDashboard';
+import ToastNotification from './components/ToastNotification';
 
 export default function App() {
-  // Application Stage: 'auth' | 'passkey_challenge' | 'vault_dashboard'
-  const [stage, setStage] = useState('auth');
+  // Navigation View Stage: 'login' | 'register' | 'verify-email' | 'forgot-password' | 'passkey_challenge' | 'app'
+  const [stage, setStage] = useState('login');
+  const [activeNavTab, setActiveNavTab] = useState('home');
   const [authSession, setAuthSession] = useState(null); // { email, user, token }
   const [currentUser, setCurrentUser] = useState(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [currentTheme, setCurrentTheme] = useState('light');
 
-  // Auto-restore saved session from localStorage on app start
+  // Toasts Stack
+  const [toasts, setToasts] = useState([]);
+
+  const addToast = (message, type = 'info') => {
+    const id = 'toast_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 4000);
+  };
+
+  const removeToast = (id) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  // Restore saved session & theme from localStorage
   useEffect(() => {
     try {
+      const savedTheme = localStorage.getItem('pf_theme_pref');
+      if (savedTheme) {
+        setCurrentTheme(savedTheme);
+        document.documentElement.setAttribute('data-theme', savedTheme);
+      }
+
       const savedSession = localStorage.getItem('pf_user_session');
       if (savedSession) {
         const parsedUser = JSON.parse(savedSession);
         if (parsedUser && parsedUser.email) {
           setCurrentUser(parsedUser);
-          setStage('vault_dashboard');
+          setStage('app');
         }
       }
     } catch (err) {
-      console.warn('Could not restore local user session:', err);
+      console.warn('Could not restore session:', err);
     }
   }, []);
+
+  const handleThemeChange = (newTheme) => {
+    setCurrentTheme(newTheme);
+    document.documentElement.setAttribute('data-theme', newTheme);
+    try {
+      localStorage.setItem('pf_theme_pref', newTheme);
+    } catch (e) {}
+  };
 
   const handleRequirePasskey = (sessionData) => {
     setAuthSession(sessionData);
@@ -33,53 +69,86 @@ export default function App() {
 
   const handlePasskeyVerified = (verifiedUserData) => {
     setCurrentUser(verifiedUserData);
-    setStage('vault_dashboard');
+    setStage('app');
+    addToast(`Welcome back, ${verifiedUserData.name || 'Guna'}!`, 'success');
     try {
       localStorage.setItem('pf_user_session', JSON.stringify(verifiedUserData));
-    } catch (err) {
-      console.warn('Could not save user session locally:', err);
+    } catch (err) {}
+  };
+
+  const handleRegisterSuccess = (sessionData) => {
+    setAuthSession(sessionData);
+    setStage('verify-email');
+  };
+
+  const handleEmailVerificationComplete = () => {
+    if (authSession && authSession.user) {
+      setCurrentUser(authSession.user);
+      try {
+        localStorage.setItem('pf_user_session', JSON.stringify(authSession.user));
+      } catch (e) {}
+    } else {
+      setCurrentUser({ name: 'Guna', email: authSession ? authSession.email : 'guna@example.com' });
     }
+
+    setStage('app');
+    setShowOnboarding(true);
+    addToast('Account created & verified successfully!', 'success');
   };
 
   const handleLogout = () => {
     setAuthSession(null);
     setCurrentUser(null);
-    setStage('auth');
+    setStage('login');
+    setShowOnboarding(false);
+    addToast('Signed out successfully', 'info');
     try {
       localStorage.removeItem('pf_user_session');
-    } catch (err) {
-      console.warn('Could not remove user session:', err);
-    }
+    } catch (err) {}
   };
-
-  const containerClass = stage === 'vault_dashboard' 
-    ? 'app-container app-dashboard-mode' 
-    : 'app-container app-auth-mode';
 
   return (
     <>
-      {/* Background canvas effects */}
-      <div className="bg-canvas">
-        <div className="grid-overlay"></div>
-        <div className="glow-orb glow-orb-1"></div>
-        <div className="glow-orb glow-orb-2"></div>
-      </div>
+      {/* Toast Notification Container */}
+      <ToastNotification toasts={toasts} onDismiss={removeToast} />
 
-      <div className={containerClass}>
-        {/* Top Header Branding (visible during auth & passkey challenge) */}
-        {stage !== 'vault_dashboard' && (
-          <header className="brand-header">
-            <div className="brand-icon-wrapper">
-              <ShieldCheck size={30} color="var(--primary-accent)" />
-            </div>
-            <h1 className="brand-title">Project Friday</h1>
-            <p className="brand-subtitle">CLASSIFIED DATA VAULT &bull; LEVEL 2 PROTOCOL</p>
-          </header>
+      {/* Main Application Container */}
+      <div className={`app-root-shell ${currentTheme === 'dark' ? 'dark-theme' : 'light-theme'}`}>
+        {stage === 'login' && (
+          <LoginView
+            onSwitchToRegister={() => setStage('register')}
+            onRequirePasskey={handleRequirePasskey}
+            onForgotPassword={() => setStage('forgot-password')}
+            onLoginSuccess={(userObj) => {
+              setCurrentUser(userObj);
+              setStage('app');
+              addToast(`Welcome back, ${userObj.name}!`, 'success');
+              try {
+                localStorage.setItem('pf_user_session', JSON.stringify(userObj));
+              } catch (e) {}
+            }}
+          />
         )}
 
-        {/* Main Content Area */}
-        {stage === 'auth' && (
-          <AuthCard onRequirePasskey={handleRequirePasskey} />
+        {stage === 'register' && (
+          <RegisterView
+            onSwitchToLogin={() => setStage('login')}
+            onRegisterSuccess={handleRegisterSuccess}
+          />
+        )}
+
+        {stage === 'verify-email' && (
+          <EmailVerifyView
+            email={authSession ? authSession.email : 'user@example.com'}
+            onVerificationComplete={handleEmailVerificationComplete}
+            onChangeEmail={() => setStage('register')}
+          />
+        )}
+
+        {stage === 'forgot-password' && (
+          <ForgotPasswordView
+            onBackToLogin={() => setStage('login')}
+          />
         )}
 
         {stage === 'passkey_challenge' && authSession && (
@@ -87,17 +156,35 @@ export default function App() {
             email={authSession.email}
             user={authSession.user}
             onVerified={handlePasskeyVerified}
-            onCancel={() => setStage('auth')}
+            onCancel={() => setStage('login')}
           />
         )}
 
-        {stage === 'vault_dashboard' && currentUser && (
-          <VaultDashboard user={currentUser} onLogout={handleLogout} />
+        {stage === 'app' && currentUser && (
+          <VaultDashboard
+            user={currentUser}
+            onLogout={handleLogout}
+            currentTheme={currentTheme}
+            onThemeChange={handleThemeChange}
+            onRequirePasskey={handleRequirePasskey}
+            onShowToast={addToast}
+            activeNavTab={activeNavTab}
+            onSelectNavTab={setActiveNavTab}
+          />
+        )}
+
+        {/* Onboarding Welcome Screen */}
+        {showOnboarding && currentUser && (
+          <OnboardingModal
+            userName={currentUser.name}
+            onUploadClick={() => {
+              setShowOnboarding(false);
+              setActiveNavTab('files');
+            }}
+            onSkip={() => setShowOnboarding(false)}
+          />
         )}
       </div>
     </>
   );
 }
-
-
-

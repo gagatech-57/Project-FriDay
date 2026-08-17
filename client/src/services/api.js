@@ -96,9 +96,10 @@ export async function uploadFileApi(filePayload) {
   }
 }
 
-export async function fetchFilesApi(email) {
+export async function fetchFilesApi(email, view = 'all') {
   try {
-    const url = email ? `/api/files?email=${encodeURIComponent(email)}` : '/api/files';
+    let url = `/api/files?view=${encodeURIComponent(view)}`;
+    if (email) url += `&email=${encodeURIComponent(email)}`;
     const response = await fetch(url);
     return await response.json();
   } catch (error) {
@@ -121,17 +122,91 @@ export async function fetchFileContentApi(fileId) {
   }
 }
 
-export async function deleteFileApi(fileId) {
+export async function toggleFavoriteApi(fileId, isFavorite) {
+  try {
+    const response = await fetch(`/api/files/${fileId}/favorite`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isFavorite })
+    });
+    return await response.json();
+  } catch (error) {
+    return { success: false, message: 'Network error updating favorite.' };
+  }
+}
+
+export async function trashFileApi(fileId, isDeleted = true) {
+  try {
+    const response = await fetch(`/api/files/${fileId}/trash`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isDeleted })
+    });
+    return await response.json();
+  } catch (error) {
+    return { success: false, message: 'Network error updating trash status.' };
+  }
+}
+
+export async function permanentDeleteFileApi(fileId) {
   try {
     const response = await fetch(`/api/files/${fileId}`, {
       method: 'DELETE'
     });
     return await response.json();
   } catch (error) {
-    return {
-      success: false,
-      message: 'Network Error deleting file.'
-    };
+    return { success: false, message: 'Network Error deleting file.' };
+  }
+}
+
+export async function deleteFileApi(fileId) {
+  return permanentDeleteFileApi(fileId);
+}
+
+export async function shareFileApi(fileId) {
+  try {
+    const response = await fetch(`/api/files/${fileId}/share`, {
+      method: 'POST'
+    });
+    return await response.json();
+  } catch (error) {
+    return { success: false, message: 'Network error generating share link.' };
+  }
+}
+
+// User Profile & Settings APIs
+export async function fetchUserProfileApi(email) {
+  try {
+    const response = await fetch(`/api/user/profile?email=${encodeURIComponent(email)}`);
+    return await response.json();
+  } catch (error) {
+    return { success: false, message: 'Unable to fetch user profile.' };
+  }
+}
+
+export async function updateUserProfileApi(profileData) {
+  try {
+    const response = await fetch('/api/user/profile', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(profileData)
+    });
+    return await response.json();
+  } catch (error) {
+    return { success: false, message: 'Unable to update profile.' };
+  }
+}
+
+export async function updateUserSettingsApi(settingsData) {
+  try {
+    const response = await fetch('/api/user/settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(settingsData)
+    });
+    return await response.json();
+  } catch (error) {
+    return { success: false, message: 'Unable to update settings.' };
   }
 }
 

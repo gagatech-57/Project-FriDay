@@ -12,8 +12,8 @@ const inMemoryUsers = new Map();
 const otpStore = new Map(); // key: emailOrMobile, value: { otp, timestamp, type }
 
 // Helper to generate JWT token
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET || 'friday_secret_fallback', {
+const generateToken = (id, email) => {
+  return jwt.sign({ id, email }, process.env.JWT_SECRET || 'friday_secret_fallback', {
     expiresIn: '30d'
   });
 };
@@ -54,7 +54,7 @@ router.post('/register', async (req, res) => {
           passkey
         });
 
-        const token = generateToken(user._id);
+        const token = generateToken(user._id, cleanEmail);
         return res.status(201).json({
           success: true,
           message: 'Account created successfully!',
@@ -62,7 +62,8 @@ router.post('/register', async (req, res) => {
           user: {
             id: user._id,
             name: user.name,
-            email: user.email
+            email: user.email,
+            mobileNumber: user.mobileNumber
           }
         });
       } catch (dbError) {
@@ -92,7 +93,7 @@ router.post('/register', async (req, res) => {
     };
 
     inMemoryUsers.set(cleanEmail, newUser);
-    const token = generateToken(userId);
+    const token = generateToken(userId, cleanEmail);
 
     return res.status(201).json({
       success: true,
@@ -101,7 +102,8 @@ router.post('/register', async (req, res) => {
       user: {
         id: userId,
         name: newUser.name,
-        email: newUser.email
+        email: newUser.email,
+        mobileNumber: newUser.mobileNumber
       }
     });
   } catch (error) {
@@ -133,7 +135,7 @@ router.post('/login', async (req, res) => {
       try {
         const user = await User.findOne({ email: cleanEmail });
         if (user && (await user.matchPassword(password))) {
-          const token = generateToken(user._id);
+          const token = generateToken(user._id, cleanEmail);
           return res.json({
             success: true,
             requirePasskey: true,
@@ -142,7 +144,8 @@ router.post('/login', async (req, res) => {
             user: {
               id: user._id,
               name: user.name,
-              email: user.email
+              email: user.email,
+              mobileNumber: user.mobileNumber || ''
             }
           });
         }
@@ -154,7 +157,7 @@ router.post('/login', async (req, res) => {
     // In-Memory Fallback
     const memUser = inMemoryUsers.get(cleanEmail);
     if (memUser && (await bcrypt.compare(password, memUser.password))) {
-      const token = generateToken(memUser.id);
+      const token = generateToken(memUser.id, cleanEmail);
       return res.json({
         success: true,
         requirePasskey: true,
@@ -163,7 +166,8 @@ router.post('/login', async (req, res) => {
         user: {
           id: memUser.id,
           name: memUser.name,
-          email: memUser.email
+          email: memUser.email,
+          mobileNumber: memUser.mobileNumber || ''
         }
       });
     }
@@ -207,10 +211,12 @@ router.post('/verify-passkey', async (req, res) => {
               success: true,
               passkeyVerified: true,
               message: 'Passkey verified! Vault access granted.',
+              token: generateToken(user._id, cleanEmail),
               user: {
                 id: user._id,
                 name: user.name,
-                email: user.email
+                email: user.email,
+                mobileNumber: user.mobileNumber || ''
               }
             });
           }
@@ -229,10 +235,12 @@ router.post('/verify-passkey', async (req, res) => {
           success: true,
           passkeyVerified: true,
           message: 'Passkey verified! Vault access granted.',
+          token: generateToken(memUser.id, cleanEmail),
           user: {
             id: memUser.id,
             name: memUser.name,
-            email: memUser.email
+            email: memUser.email,
+            mobileNumber: memUser.mobileNumber || ''
           }
         });
       }

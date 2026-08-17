@@ -15,6 +15,11 @@ const userSchema = new mongoose.Schema({
     trim: true
   },
 
+  username: {
+    type: String,
+    trim: true,
+    default: ''
+  },
   password: {
     type: String,
     required: [true, 'Password is required'],
@@ -24,6 +29,27 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Passkey is required'],
     minlength: 4
+  },
+  isEmailVerified: {
+    type: Boolean,
+    default: true
+  },
+  verificationCode: {
+    type: String,
+    default: null
+  },
+  resetPasswordToken: {
+    type: String,
+    default: null
+  },
+  resetPasswordExpire: {
+    type: Date,
+    default: null
+  },
+  themePreference: {
+    type: String,
+    enum: ['light', 'dark', 'system'],
+    default: 'light'
   },
   createdAt: {
     type: Date,

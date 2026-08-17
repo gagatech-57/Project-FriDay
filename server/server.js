@@ -12,11 +12,20 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
+// Middleware for authentication parsing
+const { authMiddleware } = require('./middleware/authMiddleware');
+app.use(authMiddleware);
+
 // Routes
 const authRoutes = require('./routes/auth');
 const fileRoutes = require('./routes/files');
+const mobileFileRoutes = require('./routes/mobileFiles');
+const userRoutes = require('./routes/user');
+
 app.use('/api/auth', authRoutes);
-app.use('/api/files', fileRoutes);
+app.use('/api/files', fileRoutes); // Legacy files endpoint (website compatible)
+app.use('/api/mobile/files', mobileFileRoutes); // Secure mobile files endpoint
+app.use('/api/user', userRoutes);
 
 // Health check / API status endpoint
 app.get('/api/health', (req, res) => {

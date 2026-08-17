@@ -1,20 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
-  ShieldCheck, 
-  LogOut, 
   FileText, 
   Image as ImageIcon, 
   FileCode, 
   HardDrive, 
-  Lock, 
   FolderLock,
   Search,
   Upload,
   Plus,
-  Activity,
-  CheckCircle,
-  Key,
-  Database,
   LayoutGrid,
   List,
   Trash2,
@@ -27,63 +20,62 @@ import {
   RotateCcw,
   Copy,
   Check,
-  Cpu,
-  Layers,
-  ExternalLink,
-  ChevronDown
+  Star,
+  Share2,
+  Info,
+  Clock,
+  Folder,
+  ShieldCheck,
+  MoreVertical,
+  RefreshCw,
+  ExternalLink
 } from 'lucide-react';
-import { uploadFileApi, fetchFilesApi, deleteFileApi, fetchFileContentApi } from '../services/api';
+import { 
+  uploadFileApi, 
+  fetchFilesApi, 
+  toggleFavoriteApi, 
+  trashFileApi, 
+  permanentDeleteFileApi, 
+  fetchFileContentApi,
+  shareFileApi
+} from '../services/api';
 
-// Helper to convert base64 DataURL or GridFS streaming endpoint into a native Blob / Stream URL
-const createBlobUrl = (dataUrl, fallbackMime = 'application/pdf') => {
-  if (!dataUrl) return null;
-  if (dataUrl.startsWith('blob:') || dataUrl.startsWith('/api/files/') || dataUrl.startsWith('http://') || dataUrl.startsWith('https://')) {
-    return dataUrl;
-  }
-  if (dataUrl.startsWith('data:')) {
-    try {
-      const parts = dataUrl.split(',');
-      const mimeMatch = parts[0].match(/:(.*?);/);
-      const mimeType = mimeMatch ? mimeMatch[1] : fallbackMime;
-      const bstr = atob(parts[1]);
-      let n = bstr.length;
-      const u8arr = new Uint8Array(n);
-      while (n--) {
-        u8arr[n] = bstr.charCodeAt(n);
-      }
-      const blob = new Blob([u8arr], { type: mimeType });
-      return URL.createObjectURL(blob);
-    } catch (e) {
-      console.warn('Could not create blob URL:', e);
-      return dataUrl;
-    }
-  }
-  return dataUrl;
-};
+import Sidebar from './Sidebar';
+import Header from './Header';
+import UploadModal from './UploadModal';
+import ShareModal from './ShareModal';
+import FileDetailsDrawer from './FileDetailsDrawer';
+import ConfirmModal from './ConfirmModal';
+import SettingsView from './SettingsView';
+import SecurityView from './SecurityView';
+import ProfileView from './ProfileView';
 
-export default function VaultDashboard({ user, onLogout }) {
+export default function VaultDashboard({ 
+  user, 
+  onLogout, 
+  currentTheme, 
+  onThemeChange, 
+  onRequirePasskey, 
+  onShowToast, 
+  activeNavTab, 
+  onSelectNavTab 
+}) {
+  const [activeTab, setActiveTab] = useState(activeNavTab || 'home');
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeFilter, setActiveFilter] = useState('all');
+  const [activeFilter, setActiveFilter] = useState('all'); // 'all' | 'image' | 'pdf' | 'doc'
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
 
-  // Profile Popover Dropdown Menu State
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const profileMenuRef = useRef(null);
-
-  // File Upload & Progress State
-  const fileInputRef = useRef(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [currentUploadName, setCurrentUploadName] = useState('');
-  const [newlyAddedFileId, setNewlyAddedFileId] = useState(null);
-
-  // Preview & Download Modal State
+  // Modals & Panels
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [shareTargetFile, setShareTargetFile] = useState(null);
+  const [detailsFile, setDetailsFile] = useState(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [selectedPreviewFile, setSelectedPreviewFile] = useState(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [copySuccess, setCopySuccess] = useState(false);
 
-  // Initial Encrypted Vault Metadata Files
+  // Files State
   const [files, setFiles] = useState([
     {
       id: 'f1',
@@ -93,19 +85,15 @@ export default function VaultDashboard({ user, onLogout }) {
       type: 'pdf',
       date: 'Aug 15, 2026',
       checksum: 'e3b0c44298fc1c14',
-      storageType: 'metadata_vault',
+      storageType: 'gridfs',
+      isFavorite: true,
+      isDeleted: false,
+      userEmail: user ? user.email : 'guna@example.com',
       url: null,
       content: `[PROJECT FRIDAY - CLASSIFIED SECURITY PROTOCOL v2.4]
-
-1. LEVEL 2 PASSKEY AUTHENTICATION
-- Primary Authentication: Password Hash (Bcrypt 10 rounds).
-- Secondary Authentication: 4 to 8 digit Passkey PIN.
-- Database Connection: Local MongoDB (mongodb://127.0.0.1:27017/project_friday).
-
-2. VAULT ENCRYPTION & KEY DERIVATION
-- Encryption Standard: AES-256-GCM.
-- Key Derivation Function: PBKDF2 with SHA-256 HMAC.
-- Payload Protection: End-to-end zero-trust metadata separation model.`
+1. PASSKEY AUTHENTICATION: Active
+2. VAULT ENCRYPTION: AES-256-GCM
+3. GRIDFS CHUNK STORAGE: Active`
     },
     {
       id: 'f2',
@@ -115,246 +103,124 @@ export default function VaultDashboard({ user, onLogout }) {
       type: 'image',
       date: 'Aug 15, 2026',
       checksum: 'f44f4964e6c998de',
-      storageType: 'metadata_vault',
-      url: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400"><rect width="600" height="400" fill="%230d1527" rx="24"/><rect width="596" height="396" x="2" y="2" fill="none" stroke="%2300f2fe" stroke-width="2" rx="22" opacity="0.6"/><circle cx="300" cy="200" r="110" fill="%2300f2fe" opacity="0.1"/><path d="M300 130 L350 240 L250 240 Z" fill="%2300f2fe"/><text x="300" y="310" font-family="sans-serif" font-weight="900" font-size="22" fill="%23ffffff" text-anchor="middle" letter-spacing="3">PROJECT FRIDAY VAULT</text><text x="300" y="340" font-family="monospace" font-size="14" fill="%2300f2fe" text-anchor="middle">LEVEL 2 SECURITY AUTHENTICATED</text></svg>'
-    },
-    {
-      id: 'f3',
-      name: 'MongoDB_Encrypted_Backup.enc',
-      size: '5.8 MB',
-      fileSizeBytes: 6081740,
-      type: 'code',
-      date: 'Aug 15, 2026',
-      checksum: 'a8f5f167f44f4964',
-      storageType: 'metadata_vault',
-      url: null,
-      content: `{
-  "system": "Project Friday Vault Database",
-  "version": "1.0.0",
-  "status": "ENCRYPTED_AES_256",
-  "dbName": "project_friday",
-  "collections": ["users", "vault_metadata", "audit_logs"],
-  "securityLevel": 2,
-  "passkeyVerification": true,
-  "payloadHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-}`
+      storageType: 'gridfs',
+      isFavorite: false,
+      isDeleted: false,
+      userEmail: user ? user.email : 'guna@example.com',
+      url: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400"><rect width="600" height="400" fill="%230d1527" rx="24"/><rect width="596" height="396" x="2" y="2" fill="none" stroke="%2300f2fe" stroke-width="2" rx="22" opacity="0.6"/><circle cx="300" cy="200" r="110" fill="%2300f2fe" opacity="0.1"/><path d="M300 130 L350 240 L250 240 Z" fill="%2300f2fe"/><text x="300" y="310" font-family="sans-serif" font-weight="900" font-size="22" fill="%23ffffff" text-anchor="middle" letter-spacing="3">PROJECT FRIDAY VAULT</text></svg>'
     }
   ]);
 
-  // Load saved file metadata from MongoDB database on mount (Ultra-Fast Metadata Fetch)
   useEffect(() => {
-    async function loadSavedFiles() {
-      if (user && user.email) {
-        const res = await fetchFilesApi(user.email);
-        if (res && res.success && res.files && res.files.length > 0) {
-          setFiles(res.files);
-        }
+    if (activeNavTab) {
+      setActiveTab(activeNavTab);
+    }
+  }, [activeNavTab]);
+
+  // Load files from backend depending on activeTab (home, files, recent, favorites, trash)
+  const loadFiles = async () => {
+    if (user && user.email) {
+      let viewQuery = 'all';
+      if (activeTab === 'recent') viewQuery = 'recent';
+      if (activeTab === 'favorites') viewQuery = 'favorites';
+      if (activeTab === 'trash') viewQuery = 'trash';
+
+      const res = await fetchFilesApi(user.email, viewQuery);
+      if (res && res.success && res.files) {
+        setFiles(res.files);
       }
     }
-    loadSavedFiles();
-  }, [user]);
+  };
 
-  // Close profile dropdown menu on outside click
   useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target)) {
-        setShowProfileMenu(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+    loadFiles();
+  }, [user, activeTab]);
 
-  const getInitials = (name) => {
-    if (!name) return 'PF';
-    return name
-      .split(' ')
-      .map((n) => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-  };
-
-  // Open Native File Explorer
-  const handleOpenExplorer = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
-
-  // Handle File Selection, Metadata Extraction & Stream Upload to MongoDB GridFS
-  const handleFileChange = (e) => {
-    const selectedFiles = Array.from(e.target.files);
-    if (!selectedFiles || selectedFiles.length === 0) return;
-
-    const file = selectedFiles[0];
-
-    // File Size Validation (Max 500 MB)
-    const maxSizeBytes = 500 * 1024 * 1024;
-    if (file.size > maxSizeBytes) {
-      alert('File size exceeds the 500MB limit for Project Friday GridFS storage.');
-      e.target.value = '';
-      return;
-    }
-
-    setCurrentUploadName(file.name);
-    setIsUploading(true);
-    setUploadProgress(0);
-
-    const fileType = file.type.startsWith('image/')
-      ? 'image'
-      : file.name.endsWith('.pdf') || file.type === 'application/pdf'
-      ? 'pdf'
-      : file.type.startsWith('video/') || file.type.startsWith('audio/')
-      ? 'media'
-      : file.type.includes('json') || file.name.endsWith('.enc') || file.type.includes('javascript')
-      ? 'code'
-      : 'doc';
-
-    // 0% -> 100% Upload Progress Animation
-    let currentProgress = 0;
-    const interval = setInterval(() => {
-      currentProgress += Math.floor(Math.random() * 22) + 16;
-      if (currentProgress >= 100) {
-        currentProgress = 100;
-        setUploadProgress(100);
-        clearInterval(interval);
-
-        setTimeout(async () => {
-          const formData = new FormData();
-          formData.append('file', file);
-          formData.append('userEmail', user.email);
-          formData.append('type', fileType);
-          formData.append('size', (file.size / (1024 * 1024)).toFixed(2) + ' MB');
-
-          // Stream File directly to MongoDB GridFS Vault
-          const apiRes = await uploadFileApi(formData);
-          const savedFile = (apiRes && apiRes.success && apiRes.file)
-            ? apiRes.file
-            : {
-                id: 'file_' + Date.now(),
-                name: file.name,
-                size: (file.size / (1024 * 1024)).toFixed(2) + ' MB',
-                fileSizeBytes: file.size,
-                type: fileType,
-                date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-                url: `/api/files/file_${Date.now()}/stream`,
-                downloadUrl: `/api/files/file_${Date.now()}/download`,
-                userEmail: user.email
-              };
-
-          setFiles((prev) => [savedFile, ...prev]);
-          setNewlyAddedFileId(savedFile.id);
-          setIsUploading(false);
-          setUploadProgress(0);
-          setCurrentUploadName('');
-          setTimeout(() => setNewlyAddedFileId(null), 3500);
-        }, 250);
-      } else {
-        setUploadProgress(currentProgress);
-      }
-    }, 60);
-
-    e.target.value = '';
-  };
-
-  // Open Lazy File Preview Modal
-  const handleOpenPreview = async (file) => {
-    setZoomLevel(1);
-    setCopySuccess(false);
-
-    // If streaming url or content payload is present, open immediately
-    if (file.url || file.streamUrl || file.content) {
-      const previewObj = {
-        ...file,
-        url: file.streamUrl || file.url || `/api/files/${file.id}/stream`
-      };
-      setSelectedPreviewFile(previewObj);
-      return;
-    }
-
-    // Otherwise, lazily fetch payload
-    setIsPreviewLoading(true);
-    setSelectedPreviewFile(file);
-
-    const res = await fetchFileContentApi(file.id);
-    setIsPreviewLoading(false);
-
-    if (res && res.success) {
-      setSelectedPreviewFile((prev) => ({
-        ...prev,
-        url: res.url || `/api/files/${file.id}/stream`,
-        content: res.content,
-        checksum: res.checksum || prev.checksum
-      }));
-    }
-  };
-
-  // Direct High-Speed GridFS File Download Handler
-  const handleDownloadFile = async (e, file) => {
-    if (e) e.stopPropagation();
-
-    const downloadEndpoint = file.downloadUrl || `/api/files/${file.id}/download`;
-
-    if (file.id && !file.id.startsWith('f1') && !file.id.startsWith('f2')) {
-      const a = document.createElement('a');
-      a.href = downloadEndpoint;
-      a.download = file.name;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      return;
-    }
-
-    let payloadUrl = file.url || downloadEndpoint;
-    let payloadContent = file.content;
-
-    if (payloadUrl) {
-      const a = document.createElement('a');
-      a.href = payloadUrl;
-      a.download = file.name;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    } else if (payloadContent) {
-      const blob = new Blob([payloadContent], { type: 'text/plain;charset=utf-8' });
-      const blobUrl = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = blobUrl;
-      a.download = file.name;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
-    }
-  };
-
-  // Copy Content Payload to Clipboard
-  const handleCopyContent = (text) => {
-    if (!text) return;
-    navigator.clipboard.writeText(text);
-    setCopySuccess(true);
-    setTimeout(() => setCopySuccess(false), 2000);
-  };
-
-  // Delete file from MongoDB database
-  const handleDeleteFile = async (e, id) => {
-    e.stopPropagation();
-    setFiles((prev) => prev.filter((f) => f.id !== id));
-    if (selectedPreviewFile && selectedPreviewFile.id === id) {
-      setSelectedPreviewFile(null);
-    }
-    await deleteFileApi(id);
-  };
-
-  // Filter & Search Logic
+  // Filtered files list for rendering
   const filteredFiles = files.filter((file) => {
-    const matchesSearch = file.name.toLowerCase().includes(searchTerm.toLowerCase());
-    if (activeFilter === 'all') return matchesSearch;
-    if (activeFilter === 'docs') return matchesSearch && (file.type === 'pdf' || file.type === 'doc');
-    if (activeFilter === 'media') return matchesSearch && file.type === 'image';
+    // Filter by tab
+    if (activeTab === 'trash') {
+      if (!file.isDeleted) return false;
+    } else {
+      if (file.isDeleted) return false;
+      if (activeTab === 'favorites' && !file.isFavorite) return false;
+    }
+
+    // Filter by search term
+    const matchesSearch =
+      !searchTerm ||
+      file.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      file.type.toLowerCase().includes(searchTerm.toLowerCase());
+
+    // Filter by file type pill
+    if (activeFilter === 'image') return matchesSearch && file.type === 'image';
+    if (activeFilter === 'pdf') return matchesSearch && (file.type === 'pdf' || file.name.endsWith('.pdf'));
+    if (activeFilter === 'doc') return matchesSearch && (file.type === 'doc' || file.type === 'code');
     return matchesSearch;
   });
+
+  const calculateStorageMB = () => {
+    const totalBytes = files
+      .filter((f) => !f.isDeleted)
+      .reduce((acc, curr) => acc + (curr.fileSizeBytes || 1048576), 0);
+    return (totalBytes / (1024 * 1024)).toFixed(1);
+  };
+
+  // Handlers
+  const handleToggleFavorite = async (file, e) => {
+    if (e) e.stopPropagation();
+    const newStatus = !file.isFavorite;
+    setFiles((prev) => prev.map((f) => (f.id === file.id ? { ...f, isFavorite: newStatus } : f)));
+    onShowToast(newStatus ? 'Added to Favorites' : 'Removed from Favorites', 'info');
+    await toggleFavoriteApi(file.id, newStatus);
+  };
+
+  const handleMoveToTrash = async (file, e) => {
+    if (e) e.stopPropagation();
+    setFiles((prev) => prev.filter((f) => f.id !== file.id));
+    onShowToast(`Moved "${file.name}" to Trash`, 'info');
+    await trashFileApi(file.id, true);
+  };
+
+  const handleRestoreFromTrash = async (file, e) => {
+    if (e) e.stopPropagation();
+    setFiles((prev) => prev.filter((f) => f.id !== file.id));
+    onShowToast(`Restored "${file.name}"`, 'success');
+    await trashFileApi(file.id, false);
+  };
+
+  const handlePermanentDelete = async (fileId) => {
+    setFiles((prev) => prev.filter((f) => f.id !== fileId));
+    setConfirmDeleteId(null);
+    onShowToast('File permanently deleted', 'success');
+    await permanentDeleteFileApi(fileId);
+  };
+
+  const handleDownloadFile = (e, file) => {
+    if (e) e.stopPropagation();
+    const downloadUrl = file.downloadUrl || `/api/files/${file.id}/download`;
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = file.name;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    onShowToast(`Downloading ${file.name}...`, 'info');
+  };
+
+  const handleOpenPreview = async (file) => {
+    setZoomLevel(1);
+    setSelectedPreviewFile(file);
+
+    if (file.hasContent && !file.content && !file.url) {
+      setIsPreviewLoading(true);
+      const res = await fetchFileContentApi(file.id);
+      setIsPreviewLoading(false);
+      if (res && res.success) {
+        setSelectedPreviewFile((prev) => (prev ? { ...prev, ...res } : prev));
+      }
+    }
+  };
 
   const renderFileIcon = (type, size = 22) => {
     switch (type) {
@@ -366,552 +232,351 @@ export default function VaultDashboard({ user, onLogout }) {
   };
 
   return (
-    <div className="dashboard-container">
-      {/* Hidden Native File Explorer Input */}
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleFileChange}
-        style={{ display: 'none' }}
-        multiple
+    <div className="app-shell-layout">
+      {/* Desktop Sidebar & Mobile Bottom Navbar */}
+      <Sidebar
+        activeTab={activeTab}
+        onSelectTab={(tab) => { setActiveTab(tab); if (onSelectNavTab) onSelectNavTab(tab); }}
+        onOpenUpload={() => setShowUploadModal(true)}
+        storageUsedMB={calculateStorageMB()}
       />
 
-      {/* Top Application Header */}
-      <div className="dashboard-header">
-        {/* Left: Brand Logo Title & Welcome Greeting */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div className="brand-icon-wrapper" style={{ width: '44px', height: '44px' }}>
-            <ShieldCheck size={26} color="var(--primary-accent)" />
-          </div>
-          <div>
-            <h2 className="dashboard-title" style={{ fontSize: '1.25rem', lineHeight: '1.2' }}>
-              Project Friday
-            </h2>
-            <p className="dashboard-email" style={{ color: 'var(--primary-accent)', fontWeight: '700', fontSize: '0.84rem', fontFamily: 'var(--font-display)', marginTop: '2px' }}>
-              Welcome back, {user.name || 'Guna'}
-            </p>
-          </div>
-        </div>
+      <div className="app-main-content">
+        {/* Top Header */}
+        <Header
+          user={user}
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          onSelectTab={(tab) => { setActiveTab(tab); if (onSelectNavTab) onSelectNavTab(tab); }}
+          onLogout={onLogout}
+          searchCount={filteredFiles.length}
+        />
 
-        {/* Right: Interactive Profile Avatar Badge & Dropdown */}
-        <div className="profile-dropdown-wrapper" ref={profileMenuRef}>
-          <div 
-            className="profile-trigger-btn"
-            onClick={() => setShowProfileMenu(!showProfileMenu)}
-            role="button"
-            tabIndex={0}
-            title="View Profile & Options"
-          >
-            <div className="avatar" style={{ width: '38px', height: '38px', fontSize: '0.95rem' }}>
-              {getInitials(user.name)}
-            </div>
-            <div style={{ textAlign: 'left' }}>
-              <div style={{ fontFamily: 'var(--font-display)', fontWeight: '700', fontSize: '0.85rem', color: 'var(--text-primary)', lineHeight: '1.2' }}>
-                {user.name || 'Guna'}
-              </div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.74rem', color: 'var(--text-muted)' }}>
-                {user.email}
-              </div>
-            </div>
-            <ChevronDown size={16} color="#64748b" style={{ transform: showProfileMenu ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease' }} />
-          </div>
-
-          {/* Profile Popover Menu */}
-          {showProfileMenu && (
-            <div className="profile-popover-menu">
-              <div className="popover-user-info">
-                <div className="avatar" style={{ width: '42px', height: '42px', fontSize: '1rem', flexShrink: 0 }}>
-                  {getInitials(user.name)}
-                </div>
-                <div style={{ overflow: 'hidden' }}>
-                  <h4 style={{ fontFamily: 'var(--font-display)', fontWeight: '800', fontSize: '0.92rem', color: 'var(--text-primary)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {user.name}
-                  </h4>
-                  <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {user.email}
-                  </span>
-                </div>
-              </div>
-
-              <div style={{ padding: '8px 10px', background: 'rgba(37, 99, 235, 0.06)', borderRadius: '10px', border: '1px solid rgba(37, 99, 235, 0.15)', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <CheckCircle size={14} color="#10b981" />
-                <span style={{ fontSize: '0.74rem', fontFamily: 'var(--font-mono)', color: '#2563eb', fontWeight: '700' }}>
-                  Level 2 Verified &bull; MongoDB Vault
-                </span>
-              </div>
-
-              <button onClick={onLogout} className="popover-logout-btn">
-                <LogOut size={15} />
-                <span>Sign Out</span>
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Telemetry Overview Grid (4 Cards) */}
-      <div className="metrics-grid">
-        <div className="metric-card">
-          <div className="metric-icon-box">
-            <ShieldCheck size={24} color="#2563eb" />
-          </div>
-          <div>
-            <div className="metric-value">Level 2 Active</div>
-            <div className="metric-label">Passkey Verified</div>
-          </div>
-        </div>
-
-        <div className="metric-card">
-          <div className="metric-icon-box" style={{ background: 'rgba(79, 70, 229, 0.08)', borderColor: 'rgba(79, 70, 229, 0.25)' }}>
-            <Lock size={24} color="#4f46e5" />
-          </div>
-          <div>
-            <div className="metric-value">AES-256 GCM</div>
-            <div className="metric-label">Vault Encryption</div>
-          </div>
-        </div>
-
-        <div className="metric-card">
-          <div className="metric-icon-box" style={{ background: 'rgba(16, 185, 129, 0.08)', borderColor: 'rgba(16, 185, 129, 0.25)' }}>
-            <Cpu size={24} color="#10b981" />
-          </div>
-          <div>
-            <div className="metric-value">{files.length} Vault Files</div>
-            <div className="metric-label">Indexed Metadata</div>
-          </div>
-        </div>
-
-        <div className="metric-card">
-          <div className="metric-icon-box" style={{ background: 'rgba(37, 99, 235, 0.08)', borderColor: 'rgba(37, 99, 235, 0.25)' }}>
-            <Activity size={24} color="#2563eb" />
-          </div>
-          <div>
-            <div className="metric-value">Ultra High Speed</div>
-            <div className="metric-label">Lazy Loading Engine</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Action Row: Search & + Upload File Button */}
-      <div className="dashboard-actions-row">
-        <div className="search-bar-wrapper">
-          <Search size={16} className="search-icon" />
-          <input
-            type="text"
-            className="search-input"
-            placeholder="Search vault metadata, encryption keys, logs..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+        {/* Dynamic Route Content */}
+        {activeTab === 'settings' && (
+          <SettingsView
+            user={user}
+            currentTheme={currentTheme}
+            onThemeChange={onThemeChange}
+            storageUsedMB={calculateStorageMB()}
+            onShowToast={onShowToast}
           />
-        </div>
+        )}
 
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-          {/* Grid / List View Toggle */}
-          <div className="view-toggle-group">
-            <button
-              className={`view-btn ${viewMode === 'grid' ? 'active' : ''}`}
-              onClick={() => setViewMode('grid')}
-              title="Grid View"
-            >
-              <LayoutGrid size={16} />
-            </button>
-            <button
-              className={`view-btn ${viewMode === 'list' ? 'active' : ''}`}
-              onClick={() => setViewMode('list')}
-              title="List View"
-            >
-              <List size={16} />
-            </button>
-          </div>
+        {activeTab === 'security' && (
+          <SecurityView
+            user={user}
+            onRequirePasskey={onRequirePasskey}
+            onLogoutAll={onLogout}
+            onShowToast={onShowToast}
+          />
+        )}
 
-          {/* Prominent + Plus Upload File Button */}
-          <button className="action-btn-pill" onClick={handleOpenExplorer}>
-            <Plus size={18} />
-            <span>Upload File</span>
-          </button>
-        </div>
-      </div>
+        {activeTab === 'profile' && (
+          <ProfileView
+            user={user}
+            onShowToast={onShowToast}
+          />
+        )}
 
-      {/* Main Grid Layout (Storage Manager Panel) */}
-      <div className="dashboard-grid-layout">
-        <div className="dashboard-panel-card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
-            <h3 className="panel-title" style={{ margin: 0 }}>
-              <HardDrive size={20} color="var(--primary-accent)" /> Encrypted Storage Vault ({filteredFiles.length})
-            </h3>
-
-            {/* Filter Tags */}
-            <div className="filter-btn-group">
-              {['all', 'docs', 'media'].map((filter) => (
-                <button
-                  key={filter}
-                  onClick={() => setActiveFilter(filter)}
-                  className={`filter-badge-btn ${activeFilter === filter ? 'active' : ''}`}
-                >
-                  {filter}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Grid View vs List View Display */}
-          {filteredFiles.length === 0 ? (
-            <div className="vault-dormant-card" style={{ marginTop: 0 }}>
-              <div className="brand-icon-wrapper" style={{ width: '52px', height: '52px', margin: '0 auto 14px' }}>
-                <FolderLock size={24} color="var(--primary-accent)" />
-              </div>
-              <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '1.05rem', color: 'var(--text-primary)', marginBottom: '6px', fontWeight: '800' }}>
-                No Matching Vault Files
-              </h4>
-              <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', maxWidth: '420px', margin: '0 auto 18px' }}>
-                Click "+ Upload File" to add encrypted files into your MongoDB metadata storage vault.
-              </p>
-            </div>
-          ) : viewMode === 'grid' ? (
-            <div className="file-grid-container">
-              {filteredFiles.map((file) => (
-                <div 
-                  key={file.id} 
-                  className={`file-card ${file.id === newlyAddedFileId ? 'new-file-animated-entry' : ''}`}
-                  onClick={() => handleOpenPreview(file)}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <div className="file-preview-box">
-                    {file.type === 'image' ? (
-                      <img
-                        src={file.url || file.streamUrl || `/api/files/${file.id}/stream`}
-                        alt={file.name}
-                        className="file-preview-img"
-                        loading="lazy"
-                        onError={(e) => {
-                          e.target.style.display = 'none';
-                        }}
-                      />
-                    ) : (
-                      renderFileIcon(file.type, 32)
-                    )}
-                  </div>
-                  <div className="file-card-title" title={file.name}>
-                    {file.name}
-                  </div>
-                  <div className="file-card-meta">
-                    {file.size} &bull; {file.date}
-                  </div>
-                  <div className="file-card-actions">
-                    <button
-                      className="file-action-btn"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleOpenPreview(file);
-                      }}
-                      title="Preview File"
-                    >
-                      <Eye size={15} />
-                    </button>
-                    <button
-                      className="file-action-btn btn-download"
-                      onClick={(e) => handleDownloadFile(e, file)}
-                      title="Download File"
-                    >
-                      <Download size={15} />
-                    </button>
-                    <button
-                      className="file-action-btn btn-delete"
-                      onClick={(e) => handleDeleteFile(e, file.id)}
-                      title="Delete File"
-                    >
-                      <Trash2 size={15} />
-                    </button>
-                  </div>
+        {(activeTab === 'home' || activeTab === 'files' || activeTab === 'recent' || activeTab === 'favorites' || activeTab === 'trash') && (
+          <div className="view-container">
+            {/* Greeting Header (Home View) */}
+            {activeTab === 'home' && (
+              <div className="home-hero-header">
+                <div>
+                  <h1 className="hero-greeting">Good afternoon, {user ? user.name : 'Guna'} 👋</h1>
+                  <p className="hero-greeting-sub">Manage your files securely from one place.</p>
                 </div>
-              ))}
-            </div>
-          ) : (
-            /* List View Table */
-            <div className="table-responsive-wrapper">
-              <table className="file-list-table">
-                <thead>
-                  <tr>
-                    <th className="th-file-name">File Name</th>
-                    <th className="th-file-size">Size</th>
-                    <th className="th-file-date">Date Added</th>
-                    <th className="th-file-actions">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredFiles.map((file) => (
-                    <tr 
-                      key={file.id} 
-                      className={`file-table-row ${file.id === newlyAddedFileId ? 'new-file-animated-entry' : ''}`}
-                      onClick={() => handleOpenPreview(file)}
-                    >
-                      <td className="td-file-name">
-                        <div className="file-name-cell-content">
-                          {renderFileIcon(file.type, 18)}
-                          <span className="file-name-text" title={file.name}>{file.name}</span>
-                        </div>
-                      </td>
-                      <td className="td-file-size">{file.size}</td>
-                      <td className="td-file-date">{file.date}</td>
-                      <td className="td-file-actions">
-                        <div className="table-actions-group">
-                          <button
-                            className="file-action-btn"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOpenPreview(file);
-                            }}
-                            title="Preview File"
-                          >
-                            <Eye size={15} />
-                          </button>
-                          <button
-                            className="file-action-btn btn-download"
-                            onClick={(e) => handleDownloadFile(e, file)}
-                            title="Download File"
-                          >
-                            <Download size={15} />
-                          </button>
-                          <button
-                            className="file-action-btn btn-delete"
-                            onClick={(e) => handleDeleteFile(e, file.id)}
-                            title="Delete File"
-                          >
-                            <Trash2 size={15} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Animated 0% to 100% Upload Progress Modal */}
-      {isUploading && (
-        <div className="upload-modal-overlay">
-          <div className="upload-progress-card">
-            <div className="brand-icon-wrapper" style={{ width: '56px', height: '56px', margin: '0 auto 14px' }}>
-              <Upload size={26} color="var(--primary-accent)" />
-            </div>
-            <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '1.05rem', fontWeight: '800', color: 'var(--text-primary)' }}>
-              Encrypting & Uploading Metadata...
-            </h4>
-            <p style={{ fontSize: '0.82rem', color: 'var(--primary-accent)', fontFamily: 'var(--font-mono)', margin: '4px 0 14px' }}>
-              {currentUploadName}
-            </p>
-
-            {/* 0% -> 100% Progress Bar */}
-            <div className="progress-track-bg">
-              <div
-                className="progress-track-fill"
-                style={{ width: `${uploadProgress}%` }}
-              />
-            </div>
-
-            <div className="progress-percentage">
-              {uploadProgress}%
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Universal Sci-Fi File Previewer & Downloader Modal */}
-      {selectedPreviewFile && (
-        <div className="file-preview-modal-overlay" onClick={() => setSelectedPreviewFile(null)}>
-          <div className="file-preview-card" onClick={(e) => e.stopPropagation()}>
-            {/* Modal Header with Title, Telemetry Tools & Action Buttons */}
-            <div className="preview-modal-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', overflow: 'hidden' }}>
-                {renderFileIcon(selectedPreviewFile.type, 24)}
-                <div style={{ overflow: 'hidden' }}>
-                  <h3 className="preview-modal-title" title={selectedPreviewFile.name}>
-                    {selectedPreviewFile.name}
-                  </h3>
-                  <span className="preview-modal-subtitle">
-                    {selectedPreviewFile.size} &bull; AES-256
-                  </span>
-                </div>
-              </div>
-
-              {/* Action Toolbar */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
-                {/* External Full Screen Browser View Button for PDF & Documents */}
-                {selectedPreviewFile.url && (
-                  <button
-                    className="action-btn-pill"
-                    style={{ padding: '7px 14px', fontSize: '0.76rem', background: 'rgba(37, 99, 235, 0.15)', border: '1px solid #2563eb', color: '#38bdf8' }}
-                    onClick={() => {
-                      const blobUrl = createBlobUrl(selectedPreviewFile.url, selectedPreviewFile.type === 'pdf' ? 'application/pdf' : 'image/png');
-                      if (blobUrl) {
-                        window.open(blobUrl, '_blank');
-                      }
-                    }}
-                    title="Open Document in Full Browser Tab"
-                  >
-                    <ExternalLink size={15} />
-                    <span>Full Screen</span>
-                  </button>
-                )}
-
-                {/* Download Button */}
-                <button
-                  className="action-btn-pill"
-                  style={{ padding: '7px 14px', fontSize: '0.76rem', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', boxShadow: '0 0 15px rgba(16, 185, 129, 0.4)' }}
-                  onClick={(e) => handleDownloadFile(e, selectedPreviewFile)}
-                  title="Download File Now"
-                >
-                  <Download size={15} />
-                  <span>Download</span>
-                </button>
-
-                {/* Zoom controls for Image / PDF */}
-                {(selectedPreviewFile.type === 'image' || selectedPreviewFile.type === 'pdf') && (
-                  <div style={{ display: 'flex', gap: '4px', background: 'rgba(7, 10, 20, 0.8)', padding: '2px', borderRadius: '8px', border: '1px solid rgba(30, 41, 59, 0.9)' }}>
-                    <button
-                      className="file-action-btn"
-                      onClick={() => setZoomLevel((z) => Math.max(0.5, z - 0.25))}
-                      title="Zoom Out"
-                    >
-                      <ZoomOut size={15} />
-                    </button>
-                    <button
-                      className="file-action-btn"
-                      onClick={() => setZoomLevel(1)}
-                      title="Reset Zoom"
-                    >
-                      <RotateCcw size={14} />
-                    </button>
-                    <button
-                      className="file-action-btn"
-                      onClick={() => setZoomLevel((z) => Math.min(2.5, z + 0.25))}
-                      title="Zoom In"
-                    >
-                      <ZoomIn size={15} />
-                    </button>
-                  </div>
-                )}
-
-                {/* Copy content text button */}
-                {(selectedPreviewFile.type === 'code' || selectedPreviewFile.type === 'doc' || selectedPreviewFile.content) && (
-                  <button
-                    className="file-action-btn"
-                    onClick={() => handleCopyContent(selectedPreviewFile.content || selectedPreviewFile.name)}
-                    title="Copy Content"
-                  >
-                    {copySuccess ? <Check size={16} color="#10b981" /> : <Copy size={16} />}
-                  </button>
-                )}
-
-                <button
-                  className="preview-close-btn"
-                  onClick={() => setSelectedPreviewFile(null)}
-                  title="Close Preview (Esc)"
-                >
-                  <X size={18} />
+                <button className="btn-primary-action" onClick={() => setShowUploadModal(true)}>
+                  <Plus size={18} />
+                  <span>Upload File</span>
                 </button>
               </div>
-            </div>
+            )}
 
-            {/* Modal Body Rendering */}
-            <div className="preview-body-container">
-              {isPreviewLoading ? (
-                <div style={{ padding: '60px 0', textAlign: 'center' }}>
-                  <div className="brand-icon-wrapper" style={{ width: '56px', height: '56px', margin: '0 auto 14px' }}>
-                    <Cpu size={28} color="var(--primary-accent)" />
-                  </div>
-                  <h4 style={{ fontFamily: 'var(--font-display)', color: '#ffffff', fontSize: '1rem' }}>
-                    Lazily Fetching Payload Content...
-                  </h4>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-                    Streaming data payload from database vault
+            {/* View Header (My Files, Recent, Favorites, Trash) */}
+            {activeTab !== 'home' && (
+              <div className="view-page-header-row">
+                <div>
+                  <h2 className="view-title">
+                    {activeTab === 'files' && 'My Files'}
+                    {activeTab === 'recent' && 'Recent Files'}
+                    {activeTab === 'favorites' && 'Favorite Files'}
+                    {activeTab === 'trash' && 'Trash'}
+                  </h2>
+                  <p className="view-sub">
+                    {activeTab === 'files' && 'All your files stored in MongoDB GridFS.'}
+                    {activeTab === 'recent' && 'Files opened or uploaded recently.'}
+                    {activeTab === 'favorites' && 'Your starred favorite files.'}
+                    {activeTab === 'trash' && 'Deleted files can be restored or permanently purged.'}
                   </p>
                 </div>
-              ) : (
-                <>
-                  {/* IMAGE PREVIEW */}
-                  {selectedPreviewFile.type === 'image' && (
-                    <div style={{ textAlign: 'center', width: '100%', overflow: 'auto', padding: '10px' }}>
-                      <img
-                        src={selectedPreviewFile.url || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400"><rect width="600" height="400" fill="%230d1527"/><text x="300" y="200" font-size="20" fill="%2300f2fe" text-anchor="middle">IMAGE PREVIEW</text></svg>'}
-                        alt={selectedPreviewFile.name}
-                        style={{
-                          maxWidth: '100%',
-                          maxHeight: '62vh',
-                          borderRadius: '16px',
-                          objectFit: 'contain',
-                          boxShadow: '0 15px 40px rgba(0, 0, 0, 0.7)',
-                          transform: `scale(${zoomLevel})`,
-                          transition: 'transform 0.2s ease-out'
-                        }}
-                      />
-                    </div>
-                  )}
+                {activeTab !== 'trash' && (
+                  <button className="btn-primary-action" onClick={() => setShowUploadModal(true)}>
+                    <Plus size={18} />
+                    <span>Upload File</span>
+                  </button>
+                )}
+              </div>
+            )}
 
-                  {/* NATIVE VISUAL PDF PREVIEW */}
-                  {selectedPreviewFile.type === 'pdf' && (
-                    <div style={{ width: '100%', height: '620px', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 10px 30px rgba(0,0,0,0.5)', background: '#ffffff' }}>
-                      {selectedPreviewFile.url ? (
-                        <object
-                          data={createBlobUrl(selectedPreviewFile.url, 'application/pdf')}
-                          type="application/pdf"
-                          width="100%"
-                          height="100%"
-                          style={{ border: 'none', background: '#ffffff', display: 'block' }}
-                        >
-                          <iframe
-                            src={createBlobUrl(selectedPreviewFile.url, 'application/pdf')}
-                            title={selectedPreviewFile.name}
-                            width="100%"
-                            height="100%"
-                            style={{ border: 'none', background: '#ffffff', transform: `scale(${zoomLevel})`, transformOrigin: 'top center' }}
-                          >
-                            <div style={{ padding: '30px', textAlign: 'center', color: '#0f172a' }}>
-                              <p style={{ fontWeight: '700', marginBottom: '12px' }}>PDF Inline Preview ready.</p>
-                              <button
-                                className="action-btn-pill"
-                                style={{ margin: '0 auto' }}
-                                onClick={() => window.open(createBlobUrl(selectedPreviewFile.url, 'application/pdf'), '_blank')}
-                              >
-                                Open PDF in Browser Tab
-                              </button>
-                            </div>
-                          </iframe>
-                        </object>
+            {/* Filter Pills & Grid/List Toggle Row */}
+            <div className="files-toolbar-row">
+              <div className="filter-badge-group">
+                {['all', 'image', 'pdf', 'doc'].map((filter) => (
+                  <button
+                    key={filter}
+                    className={`filter-pill ${activeFilter === filter ? 'active' : ''}`}
+                    onClick={() => setActiveFilter(filter)}
+                  >
+                    {filter === 'all' ? 'All Files' : filter.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+
+              <div className="view-mode-toggle-group">
+                <button
+                  className={`view-mode-btn ${viewMode === 'grid' ? 'active' : ''}`}
+                  onClick={() => setViewMode('grid')}
+                  title="Grid View"
+                >
+                  <LayoutGrid size={16} />
+                </button>
+                <button
+                  className={`view-mode-btn ${viewMode === 'list' ? 'active' : ''}`}
+                  onClick={() => setViewMode('list')}
+                  title="List View"
+                >
+                  <List size={16} />
+                </button>
+              </div>
+            </div>
+
+            {/* File Display Container */}
+            {filteredFiles.length === 0 ? (
+              <div className="empty-files-card">
+                <div className="empty-icon-box">
+                  <FolderLock size={32} color="var(--primary-accent)" />
+                </div>
+                <h3>
+                  {activeTab === 'trash' ? 'Trash is Empty' : 'No Files Found'}
+                </h3>
+                <p>
+                  {activeTab === 'trash'
+                    ? 'No deleted files currently stored in trash.'
+                    : 'Click "+ Upload File" to add files to your space.'}
+                </p>
+                {activeTab !== 'trash' && (
+                  <button className="btn-primary-action" onClick={() => setShowUploadModal(true)} style={{ marginTop: '16px' }}>
+                    <Plus size={16} />
+                    <span>Upload File</span>
+                  </button>
+                )}
+              </div>
+            ) : viewMode === 'grid' ? (
+              <div className="consumer-file-grid">
+                {filteredFiles.map((file) => (
+                  <div key={file.id} className="consumer-file-card" onClick={() => handleOpenPreview(file)}>
+                    {/* Thumbnail Box */}
+                    <div className="card-thumbnail-box">
+                      {file.type === 'image' ? (
+                        <img
+                          src={file.url || file.streamUrl || `/api/files/${file.id}/stream`}
+                          alt={file.name}
+                          className="card-thumbnail-img"
+                          loading="lazy"
+                          onError={(e) => { e.target.style.display = 'none'; }}
+                        />
                       ) : (
-                        <div className="pdf-preview-doc">
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(30, 41, 59, 0.9)', paddingBottom: '12px', marginBottom: '16px' }}>
-                            <span style={{ fontSize: '0.78rem', fontFamily: 'var(--font-mono)', color: 'var(--primary-accent)', fontWeight: '700' }}>
-                              PDF DOCUMENT VIEWER &bull; MONGODB VAULT
-                            </span>
-                            <span style={{ fontSize: '0.74rem', background: 'rgba(0, 242, 254, 0.1)', color: 'var(--primary-accent)', padding: '2px 8px', borderRadius: '6px', fontFamily: 'var(--font-mono)' }}>
-                              VERIFIED DOCUMENT
-                            </span>
-                          </div>
-                          <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'var(--font-body)', fontSize: '0.88rem', color: 'var(--text-primary)', margin: 0 }}>
-                            {selectedPreviewFile.content || `[CLASSIFIED PDF DOCUMENT RECORD]\n\nDocument Title: ${selectedPreviewFile.name}\nEncryption Protocol: SHA-256 / AES-256-GCM\nDate Uploaded: ${selectedPreviewFile.date}\n\nThis document contains encrypted security payload records stored in MongoDB metadata storage vault.`}
-                          </pre>
-                        </div>
+                        renderFileIcon(file.type, 36)
                       )}
-                    </div>
-                  )}
 
-                  {/* CODE / TEXT FILE PREVIEW */}
-                  {(selectedPreviewFile.type === 'code' || selectedPreviewFile.type === 'doc') && (
-                    <div className="code-preview-box">
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', borderBottom: '1px solid rgba(30, 41, 59, 0.9)', paddingBottom: '8px' }}>
-                        <span style={{ color: '#94a3b8', fontSize: '0.76rem' }}>MONOSPACE PAYLOAD VIEWER</span>
-                        <span style={{ color: '#10b981', fontSize: '0.76rem' }}>UTF-8 ENCODED &bull; METADATA VAULT</span>
-                      </div>
-                      <pre style={{ margin: 0, fontSize: '0.86rem', fontFamily: 'var(--font-mono)', color: '#00f2fe', whiteSpace: 'pre-wrap' }}>
-                        {selectedPreviewFile.content || `// Encrypted Payload Metadata Record\n{\n  "fileName": "${selectedPreviewFile.name}",\n  "fileSize": "${selectedPreviewFile.size}",\n  "encrypted": true,\n  "checksum": "${selectedPreviewFile.checksum || 'a8f5f167f44f4964'}"\n}`}
-                      </pre>
+                      {/* Favorite Star Badge */}
+                      <button
+                        className={`star-badge-btn ${file.isFavorite ? 'active' : ''}`}
+                        onClick={(e) => handleToggleFavorite(file, e)}
+                        title={file.isFavorite ? 'Unstar file' : 'Star file'}
+                      >
+                        <Star size={15} fill={file.isFavorite ? '#f59e0b' : 'none'} color={file.isFavorite ? '#f59e0b' : '#94a3b8'} />
+                      </button>
                     </div>
-                  )}
-                </>
+
+                    {/* Meta Footer */}
+                    <div className="card-info-footer">
+                      <div className="card-name-row">
+                        <span className="card-file-name" title={file.name}>{file.name}</span>
+                        <button
+                          className="card-more-btn"
+                          onClick={(e) => { e.stopPropagation(); setDetailsFile(file); }}
+                          title="File details"
+                        >
+                          <Info size={16} />
+                        </button>
+                      </div>
+
+                      <div className="card-sub-meta">
+                        {file.size} &bull; {file.date}
+                      </div>
+
+                      {/* Action Row */}
+                      <div className="card-quick-actions">
+                        <button className="quick-act-btn" onClick={(e) => { e.stopPropagation(); handleOpenPreview(file); }} title="Preview">
+                          <Eye size={14} />
+                        </button>
+                        <button className="quick-act-btn" onClick={(e) => handleDownloadFile(e, file)} title="Download">
+                          <Download size={14} />
+                        </button>
+                        <button className="quick-act-btn" onClick={(e) => { e.stopPropagation(); setShareTargetFile(file); }} title="Share">
+                          <Share2 size={14} />
+                        </button>
+                        {activeTab === 'trash' ? (
+                          <>
+                            <button className="quick-act-btn" onClick={(e) => handleRestoreFromTrash(file, e)} title="Restore">
+                              <RotateCcw size={14} color="#10b981" />
+                            </button>
+                            <button className="quick-act-btn btn-del" onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(file.id); }} title="Delete Permanently">
+                              <Trash2 size={14} color="#ef4444" />
+                            </button>
+                          </>
+                        ) : (
+                          <button className="quick-act-btn btn-del" onClick={(e) => handleMoveToTrash(file, e)} title="Move to Trash">
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              /* List Table View */
+              <div className="table-responsive-wrapper">
+                <table className="file-list-table">
+                  <thead>
+                    <tr>
+                      <th className="th-file-name">Name</th>
+                      <th className="th-file-size">Size</th>
+                      <th className="th-file-date">Modified</th>
+                      <th className="th-file-actions">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredFiles.map((file) => (
+                      <tr key={file.id} className="file-table-row" onClick={() => handleOpenPreview(file)}>
+                        <td className="td-file-name">
+                          <div className="file-name-cell-content">
+                            {renderFileIcon(file.type, 18)}
+                            <span className="file-name-text" title={file.name}>{file.name}</span>
+                            {file.isFavorite && <Star size={14} fill="#f59e0b" color="#f59e0b" />}
+                          </div>
+                        </td>
+                        <td className="td-file-size">{file.size}</td>
+                        <td className="td-file-date">{file.date}</td>
+                        <td className="td-file-actions">
+                          <div className="table-actions-group">
+                            <button className="file-action-btn" onClick={(e) => { e.stopPropagation(); handleOpenPreview(file); }} title="Preview">
+                              <Eye size={15} />
+                            </button>
+                            <button className="file-action-btn" onClick={(e) => handleDownloadFile(e, file)} title="Download">
+                              <Download size={15} />
+                            </button>
+                            <button className="file-action-btn" onClick={(e) => { e.stopPropagation(); setShareTargetFile(file); }} title="Share">
+                              <Share2 size={15} />
+                            </button>
+                            {activeTab === 'trash' ? (
+                              <button className="file-action-btn btn-delete" onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(file.id); }} title="Delete Permanently">
+                                <Trash2 size={15} />
+                              </button>
+                            ) : (
+                              <button className="file-action-btn btn-delete" onClick={(e) => handleMoveToTrash(file, e)} title="Move to Trash">
+                                <Trash2 size={15} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Upload Modal */}
+      {showUploadModal && (
+        <UploadModal
+          userEmail={user ? user.email : ''}
+          onClose={() => setShowUploadModal(false)}
+          onUploadSuccess={(newFile) => {
+            setFiles((prev) => [newFile, ...prev]);
+            onShowToast(`Uploaded ${newFile.name}`, 'success');
+          }}
+        />
+      )}
+
+      {/* Share Modal */}
+      {shareTargetFile && (
+        <ShareModal
+          file={shareTargetFile}
+          onClose={() => setShareTargetFile(null)}
+          onShowToast={onShowToast}
+        />
+      )}
+
+      {/* File Details Drawer */}
+      {detailsFile && (
+        <FileDetailsDrawer
+          file={detailsFile}
+          onClose={() => setDetailsFile(null)}
+          onDownload={(f) => handleDownloadFile(null, f)}
+          onShare={(f) => setShareTargetFile(f)}
+          onFavoriteToggle={(f) => handleToggleFavorite(f, null)}
+          onTrashToggle={(f) => handleMoveToTrash(f, null)}
+        />
+      )}
+
+      {/* Permanent Delete Confirmation Dialog */}
+      {confirmDeleteId && (
+        <ConfirmModal
+          title="Delete permanently?"
+          message="This file will be permanently purged from MongoDB GridFS. This action cannot be undone."
+          confirmText="Delete permanently"
+          confirmStyle="danger"
+          onConfirm={() => handlePermanentDelete(confirmDeleteId)}
+          onCancel={() => setConfirmDeleteId(null)}
+        />
+      )}
+
+      {/* Preview Modal */}
+      {selectedPreviewFile && (
+        <div className="preview-modal-backdrop" onClick={() => setSelectedPreviewFile(null)}>
+          <div className="file-preview-card" onClick={(e) => e.stopPropagation()}>
+            <div className="preview-modal-header">
+              <div>
+                <h3 className="preview-modal-title">{selectedPreviewFile.name}</h3>
+                <span className="preview-modal-subtitle">{selectedPreviewFile.size}</span>
+              </div>
+              <button className="preview-close-btn" onClick={() => setSelectedPreviewFile(null)}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="preview-body-container">
+              {isPreviewLoading ? (
+                <div style={{ padding: '60px', color: '#ffffff' }}>Loading preview...</div>
+              ) : selectedPreviewFile.type === 'image' ? (
+                <img
+                  src={selectedPreviewFile.url || selectedPreviewFile.streamUrl || `/api/files/${selectedPreviewFile.id}/stream`}
+                  alt={selectedPreviewFile.name}
+                  style={{ maxWidth: '100%', maxHeight: '65vh', borderRadius: '12px', transform: `scale(${zoomLevel})` }}
+                />
+              ) : (
+                <pre style={{ width: '100%', background: '#0b0f19', color: '#00f2fe', padding: '20px', borderRadius: '12px', overflowX: 'auto', fontFamily: 'var(--font-mono)' }}>
+                  {selectedPreviewFile.content || `[GRIDFS STREAM PAYLOAD]\nStreaming ${selectedPreviewFile.name} (${selectedPreviewFile.size}) directly from MongoDB`}
+                </pre>
               )}
             </div>
           </div>

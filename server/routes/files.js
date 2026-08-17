@@ -251,14 +251,30 @@ router.post('/upload', upload.single('file'), async (req, res) => {
 // @access  Public
 router.get('/', async (req, res) => {
   try {
-    const { email } = req.query;
+    const { email, view = 'all' } = req.query;
 
     if (isDbConnected()) {
       try {
-        const query = email ? { userEmail: email.toLowerCase() } : {};
+        const query = {};
+        if (email) query.userEmail = email.toLowerCase();
+
+        if (view === 'trash') {
+          query.isDeleted = true;
+        } else {
+          query.isDeleted = { $ne: true };
+          if (view === 'favorites') {
+            query.isFavorite = true;
+          }
+        }
+
+        let sortOption = { createdAt: -1 };
+        if (view === 'recent') {
+          sortOption = { updatedAt: -1, createdAt: -1 };
+        }
+
         const dbFiles = await FileModel.find(query)
-          .select('-url -content')
-          .sort({ createdAt: -1 })
+          .select('-content')
+          .sort(sortOption)
           .lean();
 
         const formattedFiles = dbFiles.map((f) => ({
@@ -273,6 +289,10 @@ router.get('/', async (req, res) => {
           checksum: f.checksum || 'a8f5f167f44f4964',
           storageType: f.storageType || 'gridfs',
           userEmail: f.userEmail,
+          isFavorite: f.isFavorite || false,
+          isDeleted: f.isDeleted || false,
+          deletedAt: f.deletedAt || null,
+          shareToken: f.shareToken || null,
           hasContent: true,
           url: `/api/files/${f._id}/stream`,
           downloadUrl: `/api/files/${f._id}/download`,
@@ -289,7 +309,15 @@ router.get('/', async (req, res) => {
     }
 
     // In-memory list
-    const formattedMemFiles = inMemoryFiles.map((f) => ({
+    let filteredMem = inMemoryFiles.filter((f) => {
+      if (email && f.userEmail !== email.toLowerCase()) return false;
+      if (view === 'trash') return f.isDeleted === true;
+      if (f.isDeleted === true) return false;
+      if (view === 'favorites') return f.isFavorite === true;
+      return true;
+    });
+
+    const formattedMemFiles = filteredMem.map((f) => ({
       id: f.id,
       name: f.name,
       size: f.size,
@@ -300,6 +328,9 @@ router.get('/', async (req, res) => {
       checksum: f.checksum || 'a8f5f167f44f4964',
       storageType: f.storageType || 'inline',
       userEmail: f.userEmail,
+      isFavorite: f.isFavorite || false,
+      isDeleted: f.isDeleted || false,
+      deletedAt: f.deletedAt || null,
       hasContent: true,
       url: f.url || `/api/files/${f.id}/stream`,
       downloadUrl: `/api/files/${f.id}/download`,
@@ -507,9 +538,117 @@ router.get('/:id/content', async (req, res) => {
   }
 });
 
-// @route   DELETE /api/files/:id
-// @desc    Delete file metadata AND GridFS binary chunks from MongoDB database
-// @access  Public
+// @route   PATCH /api/files/:id/favorite
+// @desc    Toggle favorite (starred) status of a file
+router.patch('/:id/favorite', async (req, res) => {
+  try {
+    const fileId = req.params.id;
+    const { isFavorite } = req.body;
+
+    if (isDbConnected()) {
+      if (mongoose.Types.ObjectId.isValid(fileId)) {
+        const fileDoc = await FileModel.findById(fileId);
+        if (fileDoc) {
+          fileDoc.isFavorite = typeof isFavorite === 'boolean' ? isFavorite : !fileDoc.isFavorite;
+          fileDoc.updatedAt = new Date();
+          await fileDoc.save();
+
+          return res.json({
+            success: true,
+            message: fileDoc.isFavorite ? 'Added to Favorites' : 'Removed from Favorites',
+            isFavorite: fileDoc.isFavorite
+          });
+        }
+      }
+    }
+
+    const memFile = inMemoryFiles.find((f) => f.id === fileId);
+    if (memFile) {
+      memFile.isFavorite = typeof isFavorite === 'boolean' ? isFavorite : !memFile.isFavorite;
+      return res.json({
+        success: true,
+        message: memFile.isFavorite ? 'Added to Favorites' : 'Removed from Favorites',
+        isFavorite: memFile.isFavorite
+      });
+    }
+
+    return res.status(404).json({ success: false, message: 'File not found' });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// @route   PATCH /api/files/:id/trash
+// @desc    Soft delete file (move to Trash) or restore from Trash
+router.patch('/:id/trash', async (req, res) => {
+  try {
+    const fileId = req.params.id;
+    const { isDeleted } = req.body;
+
+    if (isDbConnected()) {
+      if (mongoose.Types.ObjectId.isValid(fileId)) {
+        const fileDoc = await FileModel.findById(fileId);
+        if (fileDoc) {
+          fileDoc.isDeleted = typeof isDeleted === 'boolean' ? isDeleted : true;
+          fileDoc.deletedAt = fileDoc.isDeleted ? new Date() : null;
+          fileDoc.updatedAt = new Date();
+          await fileDoc.save();
+
+          return res.json({
+            success: true,
+            message: fileDoc.isDeleted ? 'File moved to Trash' : 'File restored successfully',
+            isDeleted: fileDoc.isDeleted
+          });
+        }
+      }
+    }
+
+    const memFile = inMemoryFiles.find((f) => f.id === fileId);
+    if (memFile) {
+      memFile.isDeleted = typeof isDeleted === 'boolean' ? isDeleted : true;
+      memFile.deletedAt = memFile.isDeleted ? new Date() : null;
+      return res.json({
+        success: true,
+        message: memFile.isDeleted ? 'File moved to Trash' : 'File restored successfully',
+        isDeleted: memFile.isDeleted
+      });
+    }
+
+    return res.status(404).json({ success: false, message: 'File not found' });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// @route   POST /api/files/:id/share
+// @desc    Generate share link for a file
+router.post('/:id/share', async (req, res) => {
+  try {
+    const fileId = req.params.id;
+    const shareToken = 'share_' + Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
+
+    if (isDbConnected()) {
+      if (mongoose.Types.ObjectId.isValid(fileId)) {
+        const fileDoc = await FileModel.findById(fileId);
+        if (fileDoc) {
+          fileDoc.shareToken = shareToken;
+          await fileDoc.save();
+        }
+      }
+    }
+
+    return res.json({
+      success: true,
+      message: 'Share link generated successfully',
+      shareUrl: `${req.protocol}://${req.get('host')}/api/files/${fileId}/stream?token=${shareToken}`
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// @route   DELETE /api/files/:id (or /api/files/:id/permanent)
+// @desc    Permanently delete file metadata AND GridFS binary chunks from MongoDB database
 router.delete('/:id', async (req, res) => {
   try {
     const fileId = req.params.id;
@@ -538,7 +677,7 @@ router.delete('/:id', async (req, res) => {
 
             return res.json({
               success: true,
-              message: 'File metadata and GridFS chunks deleted from MongoDB database.'
+              message: 'File permanently deleted.'
             });
           }
         }
@@ -555,7 +694,7 @@ router.delete('/:id', async (req, res) => {
 
     return res.json({
       success: true,
-      message: 'File removed successfully.'
+      message: 'File permanently removed.'
     });
   } catch (error) {
     console.error('Delete File Error:', error);
