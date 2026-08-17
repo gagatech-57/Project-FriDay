@@ -660,7 +660,7 @@ export default function VaultDashboard({ user, onLogout }) {
                     {selectedPreviewFile.name}
                   </h3>
                   <span className="preview-modal-subtitle">
-                    {selectedPreviewFile.size} &bull; MongoDB Metadata Vault &bull; AES-256
+                    {selectedPreviewFile.size} &bull; AES-256
                   </span>
                 </div>
               </div>
