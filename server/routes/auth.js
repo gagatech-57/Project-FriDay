@@ -567,6 +567,82 @@ router.post('/verify-sms-otp-reset', async (req, res) => {
   }
 });
 
+const { requireAuth } = require('../middleware/authMiddleware');
+
+// @route   POST /api/auth/change-password
+// @desc    Change password directly
+// @access  Private
+router.post('/change-password', requireAuth, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ success: false, message: 'Current and new passwords are required.' });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ success: false, message: 'New password must be at least 6 characters.' });
+    }
+    
+    if (isDbConnected()) {
+      const user = await User.findById(req.userId);
+      if (!user || !(await user.matchPassword(currentPassword))) {
+        return res.status(400).json({ success: false, message: 'Incorrect current password.' });
+      }
+      user.password = newPassword;
+      await user.save();
+      return res.json({ success: true, message: 'Password changed successfully.' });
+    } else {
+      const memUser = inMemoryUsers.get(req.userEmail);
+      if (!memUser || !(await bcrypt.compare(currentPassword, memUser.password))) {
+        return res.status(400).json({ success: false, message: 'Incorrect current password.' });
+      }
+      const salt = await bcrypt.genSalt(10);
+      memUser.password = await bcrypt.hash(newPassword, salt);
+      inMemoryUsers.set(req.userEmail, memUser);
+      return res.json({ success: true, message: 'Password changed successfully.' });
+    }
+  } catch (error) {
+    console.error('Change Password Error:', error);
+    return res.status(500).json({ success: false, message: 'Server error changing password.' });
+  }
+});
+
+// @route   POST /api/auth/change-passkey
+// @desc    Change passkey directly
+// @access  Private
+router.post('/change-passkey', requireAuth, async (req, res) => {
+  try {
+    const { currentPasskey, newPasskey } = req.body;
+    if (!currentPasskey || !newPasskey) {
+      return res.status(400).json({ success: false, message: 'Current and new passkeys are required.' });
+    }
+    if (newPasskey.length < 4) {
+      return res.status(400).json({ success: false, message: 'New passkey must be at least 4 digits.' });
+    }
+    
+    if (isDbConnected()) {
+      const user = await User.findById(req.userId);
+      if (!user || !(await user.matchPasskey(currentPasskey))) {
+        return res.status(400).json({ success: false, message: 'Incorrect current passkey.' });
+      }
+      user.passkey = newPasskey;
+      await user.save();
+      return res.json({ success: true, message: 'Passkey changed successfully.' });
+    } else {
+      const memUser = inMemoryUsers.get(req.userEmail);
+      if (!memUser || !(await bcrypt.compare(currentPasskey, memUser.passkey))) {
+        return res.status(400).json({ success: false, message: 'Incorrect current passkey.' });
+      }
+      const salt = await bcrypt.genSalt(10);
+      memUser.passkey = await bcrypt.hash(newPasskey, salt);
+      inMemoryUsers.set(req.userEmail, memUser);
+      return res.json({ success: true, message: 'Passkey changed successfully.' });
+    }
+  } catch (error) {
+    console.error('Change Passkey Error:', error);
+    return res.status(500).json({ success: false, message: 'Server error changing passkey.' });
+  }
+});
+
 module.exports = router;
 
 

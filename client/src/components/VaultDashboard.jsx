@@ -238,6 +238,7 @@ export default function VaultDashboard({
       <Sidebar
         activeTab={activeTab}
         onSelectTab={(tab) => { setActiveTab(tab); if (onSelectNavTab) onSelectNavTab(tab); }}
+        onOpenUpload={() => setShowUploadModal(true)}
         storageUsedMB={calculateStorageMB()}
         isOpen={isSidebarOpen}
       />

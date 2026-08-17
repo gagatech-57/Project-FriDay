@@ -13,7 +13,7 @@ import {
   HelpCircle
 } from 'lucide-react';
 
-export default function Sidebar({ activeTab, onSelectTab, storageUsedMB = 12.4, storageTotalMB = 5120, isOpen = true }) {
+export default function Sidebar({ activeTab, onSelectTab, onOpenUpload, storageUsedMB = 12.4, storageTotalMB = 5120, isOpen = true }) {
   const percentUsed = Math.min(100, Math.max(2, (storageUsedMB / storageTotalMB) * 100));
 
   return (
@@ -136,7 +136,7 @@ export default function Sidebar({ activeTab, onSelectTab, storageUsedMB = 12.4, 
 
         <button
           className={`mobile-nav-upload-btn`}
-          onClick={onOpenUpload}
+          onClick={() => onOpenUpload && onOpenUpload()}
         >
           <Plus size={22} color="#ffffff" />
         </button>
