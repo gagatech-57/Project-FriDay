@@ -517,11 +517,15 @@ export default function VaultDashboard({ user, onLogout }) {
                   style={{ cursor: 'pointer' }}
                 >
                   <div className="file-preview-box">
-                    {file.type === 'image' && file.url ? (
+                    {file.type === 'image' ? (
                       <img
-                        src={file.url}
+                        src={file.url || file.streamUrl || `/api/files/${file.id}/stream`}
                         alt={file.name}
                         className="file-preview-img"
+                        loading="lazy"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                        }}
                       />
                     ) : (
                       renderFileIcon(file.type, 32)

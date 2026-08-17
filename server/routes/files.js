@@ -274,6 +274,7 @@ router.get('/', async (req, res) => {
           storageType: f.storageType || 'gridfs',
           userEmail: f.userEmail,
           hasContent: true,
+          url: `/api/files/${f._id}/stream`,
           downloadUrl: `/api/files/${f._id}/download`,
           streamUrl: `/api/files/${f._id}/stream`
         }));
@@ -300,6 +301,7 @@ router.get('/', async (req, res) => {
       storageType: f.storageType || 'inline',
       userEmail: f.userEmail,
       hasContent: true,
+      url: f.url || `/api/files/${f.id}/stream`,
       downloadUrl: `/api/files/${f.id}/download`,
       streamUrl: `/api/files/${f.id}/stream`
     }));
