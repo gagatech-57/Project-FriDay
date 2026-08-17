@@ -22,11 +22,11 @@ const generateToken = (id) => {
 const isDbConnected = () => mongoose.connection.readyState === 1;
 
 // @route   POST /api/auth/register
-// @desc    Register a new user (Name, Email, MobileNumber, Password, Passkey)
+// @desc    Register a new user (Name, Email, Password, Passkey)
 // @access  Public
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, mobileNumber, password, passkey } = req.body;
+    const { name, email, password, passkey } = req.body;
 
     if (!name || !email || !password || !passkey) {
       return res.status(400).json({
@@ -36,7 +36,6 @@ router.post('/register', async (req, res) => {
     }
 
     const cleanEmail = email.toLowerCase().trim();
-    const cleanMobile = mobileNumber ? mobileNumber.trim() : '';
 
     if (isDbConnected()) {
       try {
@@ -51,7 +50,6 @@ router.post('/register', async (req, res) => {
         const user = await User.create({
           name,
           email: cleanEmail,
-          mobileNumber: cleanMobile,
           password,
           passkey
         });
@@ -64,8 +62,7 @@ router.post('/register', async (req, res) => {
           user: {
             id: user._id,
             name: user.name,
-            email: user.email,
-            mobileNumber: user.mobileNumber
+            email: user.email
           }
         });
       } catch (dbError) {
@@ -90,7 +87,6 @@ router.post('/register', async (req, res) => {
       id: userId,
       name,
       email: cleanEmail,
-      mobileNumber: cleanMobile,
       password: hashedPassword,
       passkey: hashedPasskey
     };
@@ -105,8 +101,7 @@ router.post('/register', async (req, res) => {
       user: {
         id: userId,
         name: newUser.name,
-        email: newUser.email,
-        mobileNumber: newUser.mobileNumber
+        email: newUser.email
       }
     });
   } catch (error) {
@@ -147,8 +142,7 @@ router.post('/login', async (req, res) => {
             user: {
               id: user._id,
               name: user.name,
-              email: user.email,
-              mobileNumber: user.mobileNumber || ''
+              email: user.email
             }
           });
         }
@@ -169,8 +163,7 @@ router.post('/login', async (req, res) => {
         user: {
           id: memUser.id,
           name: memUser.name,
-          email: memUser.email,
-          mobileNumber: memUser.mobileNumber || ''
+          email: memUser.email
         }
       });
     }
@@ -217,8 +210,7 @@ router.post('/verify-passkey', async (req, res) => {
               user: {
                 id: user._id,
                 name: user.name,
-                email: user.email,
-                mobileNumber: user.mobileNumber || ''
+                email: user.email
               }
             });
           }
@@ -240,8 +232,7 @@ router.post('/verify-passkey', async (req, res) => {
           user: {
             id: memUser.id,
             name: memUser.name,
-            email: memUser.email,
-            mobileNumber: memUser.mobileNumber || ''
+            email: memUser.email
           }
         });
       }

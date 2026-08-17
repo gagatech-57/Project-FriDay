@@ -11,7 +11,6 @@ import {
   AlertCircle,
   CheckCircle2,
   Check,
-  Smartphone,
   HelpCircle
 } from 'lucide-react';
 import { loginUser, registerUser } from '../services/api';
@@ -22,7 +21,6 @@ export default function AuthCard({ onRequirePasskey }) {
   // Form State
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [mobileNumber, setMobileNumber] = useState('');
   const [password, setPassword] = useState('');
   const [passkey, setPasskey] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
@@ -49,7 +47,6 @@ export default function AuthCard({ onRequirePasskey }) {
 
   const resetForm = () => {
     setName('');
-    setMobileNumber('');
     setPassword('');
     setPasskey('');
     setErrorMsg('');
@@ -136,7 +133,7 @@ export default function AuthCard({ onRequirePasskey }) {
         return;
       }
 
-      const res = await registerUser({ name, email, mobileNumber, password, passkey });
+      const res = await registerUser({ name, email, password, passkey });
       setLoading(false);
 
       if (res.success) {
@@ -223,22 +220,7 @@ export default function AuthCard({ onRequirePasskey }) {
               </div>
             </div>
 
-            {/* Mobile Number Field (Register Mode) */}
-            {activeTab === 'register' && (
-              <div className="form-group">
-                <label className="input-label">Mobile Phone Number (WhatsApp Alerts)</label>
-                <div className="input-wrapper">
-                  <input
-                    type="tel"
-                    className="input-field"
-                    placeholder="+1 (555) 019-2834"
-                    value={mobileNumber}
-                    onChange={(e) => setMobileNumber(e.target.value)}
-                  />
-                  <Smartphone size={16} className="input-icon" />
-                </div>
-              </div>
-            )}
+
 
             {/* Password Field */}
             <div className="form-group">
